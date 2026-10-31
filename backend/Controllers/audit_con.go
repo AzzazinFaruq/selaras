@@ -23,12 +23,12 @@ func NewAuditHandler(db *bun.DB) *AuditHandler {
 // Query ?posyandu_id= opsional.
 func (h *AuditHandler) GetTren(c *fiber.Ctx) error {
 	q := `
-		select posyandu_id, posyandu_nama, to_char(periode, 'YYYY-MM') as periode,
+		select posyandu_id, posyandu_nama, date_format(periode, '%Y-%m') as periode,
 		       jumlah_sampel, jumlah_tercatat_asik, jml_tidak_ada_di_asik, jml_tidak_sesuai,
 		       jml_selisih_tanggal, jml_selisih_bb, jml_selisih_tb, jml_terlambat,
-		       persen_kelengkapan::float8 as persen_kelengkapan,
-		       persen_kesesuaian::float8  as persen_kesesuaian,
-		       persen_ketepatan::float8   as persen_ketepatan
+		       cast(persen_kelengkapan as double) as persen_kelengkapan,
+		       cast(persen_kesesuaian  as double) as persen_kesesuaian,
+		       cast(persen_ketepatan   as double) as persen_ketepatan
 		from v_tren_kualitas
 		where puskesmas_id = ?`
 	args := []any{saya(c).PuskesmasID}
@@ -54,13 +54,13 @@ func (h *AuditHandler) GetRiwayat(c *fiber.Ctx) error {
 	p := saya(c)
 	rows := []models.RiwayatRow{}
 	err := h.DB.NewRaw(`
-		select a.id, s.nama as posyandu_nama, to_char(a.periode, 'YYYY-MM') as periode,
+		select a.id, s.nama as posyandu_nama, date_format(a.periode, '%Y-%m') as periode,
 		       a.jumlah_sampel,
-		       a.persen_kelengkapan::float8 as persen_kelengkapan,
-		       a.persen_kesesuaian::float8  as persen_kesesuaian,
-		       a.persen_ketepatan::float8   as persen_ketepatan,
+		       cast(a.persen_kelengkapan as double) as persen_kelengkapan,
+		       cast(a.persen_kesesuaian  as double) as persen_kesesuaian,
+		       cast(a.persen_ketepatan   as double) as persen_ketepatan,
 		       pt.nama as petugas_nama, a.catatan, a.dibuat_pada,
-		       (a.petugas_id = ? and a.dibuat_pada > now() - interval '24 hours') as bisa_dihapus
+		       (a.petugas_id = ? and a.dibuat_pada > now(3) - interval 24 hour) as bisa_dihapus
 		from audit_run a
 		join posyandu s  on s.id  = a.posyandu_id
 		join petugas  pt on pt.id = a.petugas_id
@@ -123,6 +123,7 @@ func (h *AuditHandler) CreateAudit(c *fiber.Ctx) error {
 	}
 
 	audit := &models.AuditRun{
+		ID:                 idBaru(),
 		PosyanduID:         req.PosyanduID,
 		PetugasID:          p.ID, // selalu dari sesi, bukan dari klien
 		Periode:            periode.Format("2006-01-02"),
@@ -139,10 +140,10 @@ func (h *AuditHandler) CreateAudit(c *fiber.Ctx) error {
 		audit.Catatan = &catatan
 	}
 
-	_, err = h.DB.NewInsert().Model(audit).Returning("id").Exec(c.Context())
+	_, err = h.DB.NewInsert().Model(audit).Exec(c.Context())
 	if err != nil {
-		// 23514: check constraint (angka tidak konsisten); 22003: angka di luar rentang int.
-		if k := kodePg(err); k == "23514" || k == "22003" {
+		// CHECK constraint (angka tidak konsisten) atau angka di luar rentang INT.
+		if k := kodeDB(err); k == errCheckConstraint || k == errAngkaRentang {
 			return gagal(c, fiber.StatusBadRequest, "Angka audit tidak konsisten. Jalankan ulang rekonsiliasi.")
 		}
 		return galatServer(c, err)
@@ -162,7 +163,7 @@ func (h *AuditHandler) DeleteAudit(c *fiber.Ctx) error {
 		Model((*models.AuditRun)(nil)).
 		Where("id = ?", id).
 		Where("petugas_id = ?", saya(c).ID).
-		Where("dibuat_pada > now() - interval '24 hours'").
+		Where("dibuat_pada > now(3) - interval 24 hour").
 		Exec(c.Context())
 	if err != nil {
 		return galatServer(c, err)

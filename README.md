@@ -7,7 +7,7 @@ Aplikasi web audit kualitas data pertumbuhan balita: membandingkan rekap buku re
 ```
 Browser petugas                                   Homeserver
 ┌──────────────────────────────────────┐          ┌─────────────────────────────┐
-│ file register + ekspor ASIK          │          │ Go (Fiber)  ─── PostgreSQL  │
+│ file register + ekspor ASIK          │          │ Go (Fiber)  ─── MySQL 8     │
 │   → SheetJS → normalisasi → hash     │  HTTPS   │  /api/*  hanya angka        │
 │   → rekonsiliasi → daftar masalah    │ ───────▶ │  /       frontend (dist)    │
 │     (diunduh sebagai Excel)          │  angka   │                             │
@@ -18,7 +18,7 @@ Browser petugas                                   Homeserver
 ## Struktur
 
 ```
-backend/                 Go 1.25, Fiber v2, bun (PostgreSQL), golang-jwt, bcrypt
+backend/                 Go 1.25, Fiber v2, bun (MySQL), golang-jwt, bcrypt
   main.go                server, atau perintah admin bila ada argumen
   Config/                baca .env
   Controllers/           auth, posyandu, audit
@@ -41,27 +41,29 @@ arsip-supabase/          skema & uji versi Supabase (tidak dipakai lagi)
 |---|---|
 | Data balita | Tidak pernah dikirim ke server. Body API dibatasi 16 KB; skema hanya punya kolom angka + catatan ≤ 200 karakter. |
 | Token login | JWT di cookie `HttpOnly; Secure; SameSite=Strict`. Tidak ada di body respons maupun localStorage. |
-| Rahasia | `JWT_SECRET` (≥ 32 karakter) dan `DATABASE_URL` wajib. Server berhenti bila kosong; tidak ada nilai default. |
+| Rahasia | `JWT_SECRET` (≥ 32 karakter), `DB_USER`, `DB_NAME` wajib. Server berhenti bila kosong; tidak ada nilai default. |
 | Akun | Tidak ada pendaftaran publik. Admin membuat akun lewat CLI di server. |
 | Isolasi puskesmas | Setiap query memakai `puskesmas_id` petugas dari sesi (pengganti RLS). `puskesmas_id`/`petugas_id` tidak pernah diambil dari input klien. |
 | Cabut sesi | Kolom `token_versi`: logout, ganti password, reset, atau nonaktif langsung membatalkan semua token lama. |
 | CSRF | Cookie SameSite=Strict + POST/PUT wajib `application/json`. Frontend satu origin dengan API, tanpa CORS. |
 | Brute force | Login maks 10 kali per 15 menit per IP. bcrypt cost 12. Waktu respons sama untuk email yang ada/tidak. |
 | Header | CSP ketat, X-Frame-Options DENY, HSTS (produksi), no-store untuk API. |
-| Integritas angka | CHECK constraint di PostgreSQL; persen dihitung basis data (generated column). Audit tidak bisa di-update, hanya dihapus pembuatnya ≤ 24 jam. |
+| Integritas angka | CHECK constraint di MySQL (koneksi memaksa mode ketat); persen dihitung basis data (generated column). Audit tidak bisa di-update, hanya dihapus pembuatnya ≤ 24 jam. |
+| Akses database | User MySQL khusus aplikasi dengan hak hanya di satu database. Koneksi tanpa `multiStatements`. |
 
 ## Development
 
-Butuh Go 1.25+, Node 20+, PostgreSQL 13+.
+Butuh Go 1.25+, Node 20+, **MySQL 8.0.17+** (MySQL Laragon 8.0.30 sudah cukup). MariaDB tidak didukung karena perilaku CHECK, generated column, dan `CAST AS DOUBLE`-nya berbeda.
 
 ```bash
-# 1. Database
-createuser -P selaras            # isi password
-createdb -O selaras -E UTF8 selaras
+# 1. Database (di HeidiSQL / mysql -u root)
+CREATE DATABASE selaras CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+CREATE USER 'selaras'@'127.0.0.1' IDENTIFIED BY '<password>';
+GRANT ALL PRIVILEGES ON selaras.* TO 'selaras'@'127.0.0.1';
 
 # 2. Backend
 cd backend
-cp .env.example .env             # isi DATABASE_URL dan JWT_SECRET (openssl rand -hex 32)
+cp .env.example .env             # isi DB_PASSWORD dan JWT_SECRET (openssl rand -hex 32)
 go run . puskesmas-baru "Puskesmas Contoh" "Surabaya"     # catat id-nya
 go run . petugas-baru saya@contoh.id "Nama Saya" <id-puskesmas>   # catat password
 go run .                         # API di http://127.0.0.1:8080
@@ -88,8 +90,10 @@ Lalu di aplikasi: tambah posyandu → Audit baru → pilih periode Oktober 2026 
 cd frontend && npm test          # logika rekonsiliasi (15 uji)
 
 cd backend
-# Uji integrasi API + skema. PERINGATAN: skema public di database ini DIHAPUS.
-TEST_DATABASE_URL=postgres://selaras:...@127.0.0.1:5432/selaras_test?sslmode=disable go test ./...
+# Uji integrasi API + skema. PERINGATAN: tabel SELARAS di database ini DIHAPUS.
+# Nama database wajib mengandung "test". DB_HOST/DB_PORT/DB_USER/DB_PASSWORD dari environment.
+CREATE DATABASE selaras_test ...; GRANT ALL PRIVILEGES ON selaras_test.* TO 'selaras'@'127.0.0.1';
+TEST_DB_NAME=selaras_test DB_USER=selaras DB_PASSWORD=... go test ./...
 ```
 
 Uji integrasi mencakup isolasi antar puskesmas, cookie, pembatalan sesi, batas body, rate limit, semua CHECK constraint, dan angka Tabel L.1 (85% / 82,35% / 76,47%).
@@ -123,7 +127,11 @@ cd ../backend && GOOS=linux GOARCH=amd64 go build -o selaras .
 
 ```
 APP_ADDR=127.0.0.1:8080
-DATABASE_URL=postgres://selaras:<password>@127.0.0.1:5432/selaras?sslmode=disable
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=selaras
+DB_PASSWORD=<password user MySQL>
+DB_NAME=selaras
 JWT_SECRET=<openssl rand -hex 32>
 STATIC_DIR=/opt/selaras/dist
 PROXY_HEADER=CF-Connecting-IP
@@ -136,7 +144,7 @@ Service systemd, `/etc/systemd/system/selaras.service`:
 ```ini
 [Unit]
 Description=SELARAS
-After=network.target postgresql.service
+After=network.target mysql.service
 
 [Service]
 User=selaras
@@ -163,14 +171,14 @@ sudo systemctl enable --now selaras
 **Backup** (opsional, satu baris cron harian):
 
 ```
-0 2 * * * pg_dump -Fc selaras > /var/backups/selaras-$(date +\%F).dump
+0 2 * * * mysqldump --single-transaction selaras > /var/backups/selaras-$(date +\%F).sql
 ```
 
 ## Perbedaan dari proposal (Tabel 3.1)
 
 | Proposal | Implementasi |
 |---|---|
-| Supabase (PostgreSQL, magic link, RLS) | PostgreSQL di homeserver; login email + password; isolasi di backend Go |
+| Supabase (PostgreSQL, magic link, RLS) | MySQL 8 di homeserver; login email + password; isolasi di backend Go |
 | Vercel | Homeserver; frontend disajikan oleh binary Go yang sama |
 | shadcn/ui, Zod | Tailwind biasa; validasi manual di `rekonsiliasi.js` |
 | Web Worker | Tidak dipakai; sampel 15–20 balita (atau ratusan baris) selesai dalam milidetik |

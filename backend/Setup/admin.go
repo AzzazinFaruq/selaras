@@ -11,6 +11,8 @@ import (
 
 	models "selaras/Models"
 	utils "selaras/Utils"
+
+	"github.com/google/uuid"
 )
 
 // Perintah admin lewat terminal di homeserver. Sengaja tidak ada halaman
@@ -50,11 +52,11 @@ func JalankanPerintah(args []string) {
 }
 
 func puskesmasBaru(ctx context.Context, nama, kota string) error {
-	p := &models.Puskesmas{Nama: strings.TrimSpace(nama), Kota: strings.TrimSpace(kota)}
+	p := &models.Puskesmas{ID: uuid.NewString(), Nama: strings.TrimSpace(nama), Kota: strings.TrimSpace(kota)}
 	if p.Nama == "" || p.Kota == "" {
 		return errors.New("nama dan kota wajib diisi")
 	}
-	if _, err := DB.NewInsert().Model(p).Returning("id").Exec(ctx); err != nil {
+	if _, err := DB.NewInsert().Model(p).Exec(ctx); err != nil {
 		return err
 	}
 	fmt.Printf("Puskesmas dibuat.\n  id: %s\n", p.ID)
@@ -74,13 +76,14 @@ func petugasBaru(ctx context.Context, email, nama, puskesmasID string) error {
 	}
 
 	p := &models.Petugas{
+		ID:           uuid.NewString(),
 		PuskesmasID:  puskesmasID,
 		Nama:         strings.TrimSpace(nama),
 		Email:        email,
 		PasswordHash: hash,
 		Aktif:        true,
 	}
-	if _, err := DB.NewInsert().Model(p).Returning("id").Exec(ctx); err != nil {
+	if _, err := DB.NewInsert().Model(p).Exec(ctx); err != nil {
 		return err
 	}
 	fmt.Printf("Petugas dibuat.\n  email   : %s\n  password: %s\n", email, password)

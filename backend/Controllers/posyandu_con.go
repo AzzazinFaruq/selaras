@@ -69,13 +69,14 @@ func (h *PosyanduHandler) CreatePosyandu(c *fiber.Ctx) error {
 	}
 
 	posyandu := &models.Posyandu{
+		ID:          idBaru(),
 		PuskesmasID: saya(c).PuskesmasID, // selalu dari sesi, bukan dari klien
 		Nama:        req.Nama,
 		Kelurahan:   req.kelurahan(),
 	}
-	_, err := h.DB.NewInsert().Model(posyandu).Returning("id").Exec(c.Context())
+	_, err := h.DB.NewInsert().Model(posyandu).Exec(c.Context())
 	if err != nil {
-		if kodePg(err) == "23505" {
+		if kodeDB(err) == errDuplikat {
 			return gagal(c, fiber.StatusConflict, "Nama posyandu sudah ada di puskesmas ini")
 		}
 		return galatServer(c, err)
@@ -106,11 +107,13 @@ func (h *PosyanduHandler) UpdatePosyandu(c *fiber.Ctx) error {
 		Where("puskesmas_id = ?", saya(c).PuskesmasID).
 		Exec(c.Context())
 	if err != nil {
-		if kodePg(err) == "23505" {
+		if kodeDB(err) == errDuplikat {
 			return gagal(c, fiber.StatusConflict, "Nama posyandu sudah ada di puskesmas ini")
 		}
 		return galatServer(c, err)
 	}
+	// RowsAffected = baris yang cocok (ClientFoundRows di Setup/database.go),
+	// jadi simpan tanpa perubahan tetap 1, bukan 0.
 	if n, _ := res.RowsAffected(); n == 0 {
 		return gagal(c, fiber.StatusNotFound, "Posyandu tidak ditemukan")
 	}

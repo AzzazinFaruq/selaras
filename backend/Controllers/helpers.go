@@ -9,9 +9,9 @@ import (
 	models "selaras/Models"
 	utils "selaras/Utils"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	"github.com/uptrace/bun/driver/pgdriver"
 )
 
 // saya mengembalikan petugas yang sedang login (diisi AuthMiddleware).
@@ -36,14 +36,26 @@ func idValid(s string) bool {
 	return err == nil
 }
 
-// kodePg mengambil SQLSTATE dari error PostgreSQL, misalnya 23505 (unik)
-// atau 23514 (check constraint).
-func kodePg(err error) string {
-	var pgErr pgdriver.Error
-	if errors.As(err, &pgErr) {
-		return pgErr.Field('C')
+// Nomor error MySQL yang ditangani sebagai kesalahan input (400/409), bukan 500.
+const (
+	errDuplikat        = 1062 // unique key
+	errAngkaRentang    = 1264 // angka di luar rentang INT
+	errTeksPanjang     = 1406 // teks melebihi panjang kolom
+	errCheckConstraint = 3819
+)
+
+// kodeDB mengambil nomor error MySQL (0 bila bukan error MySQL).
+func kodeDB(err error) uint16 {
+	var e *mysql.MySQLError
+	if errors.As(err, &e) {
+		return e.Number
 	}
-	return ""
+	return 0
+}
+
+// idBaru membuat UUID di Go karena MySQL tidak punya RETURNING.
+func idBaru() string {
+	return uuid.NewString()
 }
 
 func pasangCookie(c *fiber.Ctx, token string, exp time.Time) {

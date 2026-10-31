@@ -24,7 +24,7 @@ func GetDefault(key, def string) string {
 }
 
 // Wajib menghentikan program bila nilai belum diisi. Dipakai untuk rahasia
-// (DATABASE_URL, JWT_SECRET) supaya tidak pernah jatuh ke nilai default.
+// (DB_USER, DB_NAME, JWT_SECRET) supaya tidak pernah jatuh ke nilai default.
 func Wajib(key string) string {
 	v := os.Getenv(key)
 	if v == "" {

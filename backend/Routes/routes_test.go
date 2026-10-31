@@ -1,17 +1,18 @@
 package routes
 
-// Uji integrasi API + skema terhadap PostgreSQL sungguhan.
+// Uji integrasi API + skema terhadap MySQL sungguhan.
 //
-//   TEST_DATABASE_URL=postgres://.../selaras_test?sslmode=disable go test ./...
+//   TEST_DB_NAME=selaras_test go test ./...
 //
-// PERINGATAN: skema public di database itu DIHAPUS dan dibuat ulang.
-// Pakai database khusus uji, jangan database produksi.
-// Tanpa TEST_DATABASE_URL, uji ini dilewati.
+// DB_HOST, DB_PORT, DB_USER, DB_PASSWORD diambil dari environment.
+// PERINGATAN: semua tabel SELARAS di database TEST_DB_NAME DIHAPUS dan dibuat
+// ulang. Nama database wajib mengandung "test". Tanpa TEST_DB_NAME, uji dilewati.
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -24,9 +25,23 @@ import (
 	setupdb "selaras/Setup"
 	utils "selaras/Utils"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
+
+// nomorError mengembalikan nomor error MySQL (0 = tidak ada error).
+func nomorError(err error) uint16 {
+	var e *mysql.MySQLError
+	if errors.As(err, &e) {
+		return e.Number
+	}
+	if err != nil {
+		return 1 // error lain (bukan dari MySQL)
+	}
+	return 0
+}
 
 const (
 	pkA = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
@@ -94,19 +109,28 @@ func harap(t *testing.T, label string, aktual, harapan any) {
 }
 
 func siapkanDB(t *testing.T) *bun.DB {
-	dsn := os.Getenv("TEST_DATABASE_URL")
-	if dsn == "" {
-		t.Skip("TEST_DATABASE_URL kosong; uji integrasi dilewati")
+	nama := os.Getenv("TEST_DB_NAME")
+	if nama == "" {
+		t.Skip("TEST_DB_NAME kosong; uji integrasi dilewati")
 	}
-	t.Setenv("DATABASE_URL", dsn)
+	// Pengaman: semua tabel di database ini dihapus.
+	if !strings.Contains(strings.ToLower(nama), "test") {
+		t.Fatalf("TEST_DB_NAME harus mengandung kata 'test' (sekarang %q), karena tabelnya akan dihapus", nama)
+	}
+	t.Setenv("DB_NAME", nama)
 	t.Setenv("JWT_SECRET", strings.Repeat("r", 40))
 	t.Setenv("APP_ENV", "development")
 	utils.InitJWT()
 
 	setupdb.Connect()
 	ctx := context.Background()
-	if _, err := setupdb.DB.ExecContext(ctx, "drop schema public cascade; create schema public;"); err != nil {
-		t.Fatal(err)
+	for _, q := range []string{
+		"drop view if exists v_tren_kualitas",
+		"drop table if exists audit_run, petugas, posyandu, puskesmas",
+	} {
+		if _, err := setupdb.DB.ExecContext(ctx, q); err != nil {
+			t.Fatal(err)
+		}
 	}
 	setupdb.Migrate()
 	setupdb.Migrate() // harus aman dijalankan dua kali
@@ -212,6 +236,8 @@ func TestAPI(t *testing.T) {
 	harap(t, "b1 ubah posyandu A", k.kirim("PUT", "/api/posyandu/"+melatiA, map[string]string{"nama": "Diretas"}, b1).status, 404)
 	harap(t, "id bukan uuid", k.kirim("PUT", "/api/posyandu/bukan-uuid", map[string]string{"nama": "X"}, a1).status, 404)
 	harap(t, "a2 ubah posyandu puskesmasnya", k.kirim("PUT", "/api/posyandu/"+melatiA, map[string]string{"nama": "Melati", "kelurahan": "Sukolilo"}, a2).status, 200)
+	// MySQL: tanpa ClientFoundRows, simpan tanpa perubahan melaporkan 0 baris -> 404 palsu
+	harap(t, "simpan posyandu tanpa perubahan", k.kirim("PUT", "/api/posyandu/"+melatiA, map[string]string{"nama": "Melati", "kelurahan": "Sukolilo"}, a2).status, 200)
 
 	// ---------------- audit ----------------
 	body := salin(auditL1(melatiA), map[string]any{
@@ -267,7 +293,7 @@ func TestAPI(t *testing.T) {
 	tren = k.kirim("GET", "/api/tren", nil, a1).body["data"].([]any)
 	harap(t, "tren kembali ke audit sebelumnya", tren[0].(map[string]any)["jumlah_tercatat_asik"], 17.0)
 
-	db.NewRaw("update audit_run set dibuat_pada = now() - interval '30 hours' where id = ?", auditPertama).Exec(ctx)
+	db.NewRaw("update audit_run set dibuat_pada = now(3) - interval 30 hour where id = ?", auditPertama).Exec(ctx)
 	harap(t, "audit > 24 jam tidak bisa dihapus", k.kirim("DELETE", "/api/audit/"+auditPertama, nil, a1).status, 404)
 
 	// kasus tepi: tidak ada balita di ASIK -> kesesuaian & ketepatan null
@@ -315,72 +341,84 @@ func TestSkema(t *testing.T) {
 	db := siapkanDB(t)
 	ctx := context.Background()
 
-	var posyanduID, petugasID string
-	db.NewRaw("insert into posyandu (puskesmas_id, nama) values (?, 'Uji') returning id", pkA).Scan(ctx, &posyanduID)
+	posyanduID := uuid.NewString()
+	if _, err := db.NewRaw("insert into posyandu (id, puskesmas_id, nama) values (?, ?, 'Uji')", posyanduID, pkA).Exec(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var petugasID string
 	db.NewRaw("select id from petugas where email = 'a1@uji.id'").Scan(ctx, &petugasID)
 
-	insert := func(periode string, n [8]int, catatan string) string {
-		_, err := db.NewRaw(`insert into audit_run (posyandu_id, petugas_id, periode, jumlah_sampel, jumlah_tercatat_asik,
+	insert := func(periode string, n [8]int, catatan string) uint16 {
+		_, err := db.NewRaw(`insert into audit_run (id, posyandu_id, petugas_id, periode, jumlah_sampel, jumlah_tercatat_asik,
 			jml_tidak_ada_di_asik, jml_tidak_sesuai, jml_selisih_tanggal, jml_selisih_bb, jml_selisih_tb, jml_terlambat, catatan)
-			values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, nullif(?, ''))`,
-			posyanduID, petugasID, periode, n[0], n[1], n[2], n[3], n[4], n[5], n[6], n[7], catatan).Exec(ctx)
-		if err == nil {
-			return ""
-		}
-		var kode string
-		if e, ok := err.(interface{ Field(byte) string }); ok {
-			kode = e.Field('C')
-		}
-		return kode
+			values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, nullif(?, ''))`,
+			uuid.NewString(), posyanduID, petugasID, periode, n[0], n[1], n[2], n[3], n[4], n[5], n[6], n[7], catatan).Exec(ctx)
+		return nomorError(err)
 	}
 
+	const check = 3819 // MySQL: check constraint dilanggar
 	kasus := []struct {
 		label   string
 		periode string
 		n       [8]int // sampel, tercatat, tidak ada, tidak sesuai, sel tgl, sel bb, sel tb, terlambat
 		catatan string
-		harapan string
+		harapan uint16
 	}{
-		{"valid (Tabel L.1)", "2026-10-01", [8]int{20, 17, 3, 3, 0, 2, 1, 4}, "", ""},
-		{"periode bukan tanggal 1", "2026-10-15", [8]int{20, 17, 3, 3, 0, 2, 1, 4}, "", "23514"},
-		{"sampel 0", "2026-09-01", [8]int{0, 0, 0, 0, 0, 0, 0, 0}, "", "23514"},
-		{"tercatat + tidak ada <> sampel", "2026-09-01", [8]int{20, 17, 2, 3, 0, 2, 1, 4}, "", "23514"},
-		{"tidak sesuai > tercatat", "2026-09-01", [8]int{20, 17, 3, 18, 18, 0, 0, 0}, "", "23514"},
-		{"terlambat > tercatat", "2026-09-01", [8]int{20, 17, 3, 0, 0, 0, 0, 18}, "", "23514"},
-		{"rincian terbesar > tidak sesuai", "2026-09-01", [8]int{20, 17, 3, 1, 0, 2, 0, 0}, "", "23514"},
-		{"tidak sesuai > jumlah rincian", "2026-09-01", [8]int{20, 17, 3, 3, 1, 1, 0, 0}, "", "23514"},
-		{"angka negatif", "2026-09-01", [8]int{20, 17, 3, -1, 0, 0, 0, 0}, "", "23514"},
-		{"catatan > 200", "2026-09-01", [8]int{20, 17, 3, 0, 0, 0, 0, 0}, strings.Repeat("x", 201), "23514"},
+		{"valid (Tabel L.1)", "2026-10-01", [8]int{20, 17, 3, 3, 0, 2, 1, 4}, "", 0},
+		{"periode bukan tanggal 1", "2026-10-15", [8]int{20, 17, 3, 3, 0, 2, 1, 4}, "", check},
+		{"sampel 0", "2026-09-01", [8]int{0, 0, 0, 0, 0, 0, 0, 0}, "", check},
+		{"tercatat + tidak ada <> sampel", "2026-09-01", [8]int{20, 17, 2, 3, 0, 2, 1, 4}, "", check},
+		{"tidak sesuai > tercatat", "2026-09-01", [8]int{20, 17, 3, 18, 18, 0, 0, 0}, "", check},
+		{"terlambat > tercatat", "2026-09-01", [8]int{20, 17, 3, 0, 0, 0, 0, 18}, "", check},
+		{"rincian terbesar > tidak sesuai", "2026-09-01", [8]int{20, 17, 3, 1, 0, 2, 0, 0}, "", check},
+		{"tidak sesuai > jumlah rincian", "2026-09-01", [8]int{20, 17, 3, 3, 1, 1, 0, 0}, "", check},
+		{"angka negatif", "2026-09-01", [8]int{20, 17, 3, -1, 0, 0, 0, 0}, "", check},
+		{"catatan > 200 (data too long)", "2026-09-01", [8]int{20, 17, 3, 0, 0, 0, 0, 0}, strings.Repeat("x", 201), 1406},
 	}
 	for _, c := range kasus {
 		harap(t, c.label, insert(c.periode, c.n, c.catatan), c.harapan)
 	}
 
-	_, err := db.NewRaw(`insert into audit_run (posyandu_id, petugas_id, periode, jumlah_sampel, jumlah_tercatat_asik,
+	var persen [3]float64
+	db.NewRaw(`select cast(persen_kelengkapan as double), cast(persen_kesesuaian as double), cast(persen_ketepatan as double)
+		from audit_run where periode = '2026-10-01'`).Scan(ctx, &persen[0], &persen[1], &persen[2])
+	harap(t, "generated column persen (Tabel L.1)", persen, [3]float64{85, 82.35, 76.47})
+
+	_, err := db.NewRaw(`insert into audit_run (id, posyandu_id, petugas_id, periode, jumlah_sampel, jumlah_tercatat_asik,
 		jml_tidak_ada_di_asik, jml_tidak_sesuai, jml_selisih_tanggal, jml_selisih_bb, jml_selisih_tb, jml_terlambat, persen_kelengkapan)
-		values (?, ?, '2026-08-01', 20, 17, 3, 0, 0, 0, 0, 0, 99)`, posyanduID, petugasID).Exec(ctx)
-	harap(t, "kolom persen tidak bisa diisi (generated)", err != nil, true)
+		values (?, ?, ?, '2026-08-01', 20, 17, 3, 0, 0, 0, 0, 0, 99)`, uuid.NewString(), posyanduID, petugasID).Exec(ctx)
+	harap(t, "kolom persen tidak bisa diisi (generated)", nomorError(err), uint16(3105))
 
 	_, err = db.NewRaw("delete from posyandu where id = ?", posyanduID).Exec(ctx)
-	harap(t, "posyandu ber-audit tidak bisa dihapus", err != nil, true)
-	_, err = db.NewRaw("insert into petugas (puskesmas_id, nama, email, password_hash) values (?, 'X', 'Besar@uji.id', 'x')", pkA).Exec(ctx)
-	harap(t, "email petugas wajib huruf kecil", err != nil, true)
+	harap(t, "posyandu ber-audit tidak bisa dihapus (FK)", nomorError(err), uint16(1451))
+	_, err = db.NewRaw("insert into petugas (id, puskesmas_id, nama, email, password_hash) values (?, ?, 'X', 'A1@UJI.id', 'x')",
+		uuid.NewString(), pkA).Exec(ctx)
+	harap(t, "email kembar beda huruf ditolak", nomorError(err), uint16(1062))
+	_, err = db.NewRaw("insert into posyandu (id, puskesmas_id, nama) values (?, ?, 'UJI')", uuid.NewString(), pkA).Exec(ctx)
+	harap(t, "nama posyandu kembar beda huruf ditolak", nomorError(err), uint16(1062))
 
 	// Tidak ada kolom/tabel per balita
 	var teks string
-	db.NewRaw(`select string_agg(column_name, ',' order by column_name) from information_schema.columns
-		where table_schema = 'public' and table_name = 'audit_run'
-		and data_type in ('text', 'character varying', 'character', 'json', 'jsonb', 'bytea', 'ARRAY')`).Scan(ctx, &teks)
-	harap(t, "audit_run: satu-satunya kolom teks = catatan", teks, "catatan")
+	db.NewRaw(`select group_concat(column_name order by column_name separator ',') from information_schema.columns
+		where table_schema = database() and table_name = 'audit_run'
+		and data_type in ('varchar', 'text', 'tinytext', 'mediumtext', 'longtext', 'json',
+		                  'blob', 'tinyblob', 'mediumblob', 'longblob', 'binary', 'varbinary', 'enum', 'set')`).Scan(ctx, &teks)
+	harap(t, "audit_run: satu-satunya kolom teks bebas = catatan", teks, "catatan")
+
+	var char36 string
+	db.NewRaw(`select group_concat(column_name order by column_name separator ',') from information_schema.columns
+		where table_schema = database() and table_name = 'audit_run'
+		and data_type = 'char' and character_maximum_length = 36`).Scan(ctx, &char36)
+	harap(t, "audit_run: kolom CHAR(36) hanya id", char36, "id,petugas_id,posyandu_id")
 
 	var tanggal string
-	db.NewRaw(`select string_agg(column_name, ',') from information_schema.columns
-		where table_schema = 'public' and table_name = 'audit_run' and data_type = 'date'`).Scan(ctx, &tanggal)
+	db.NewRaw(`select group_concat(column_name separator ',') from information_schema.columns
+		where table_schema = database() and table_name = 'audit_run' and data_type = 'date'`).Scan(ctx, &tanggal)
 	harap(t, "audit_run: satu-satunya kolom date = periode", tanggal, "periode")
 
 	var tabel string
-	db.NewRaw(`select string_agg(table_name, ',' order by table_name) from information_schema.tables
-		where table_schema = 'public' and table_type = 'BASE TABLE'`).Scan(ctx, &tabel)
+	db.NewRaw(`select group_concat(table_name order by table_name separator ',') from information_schema.tables
+		where table_schema = database() and table_type = 'BASE TABLE'`).Scan(ctx, &tabel)
 	harap(t, "hanya 4 tabel", tabel, "audit_run,petugas,posyandu,puskesmas")
 }
 

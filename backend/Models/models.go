@@ -12,7 +12,7 @@ import (
 type Puskesmas struct {
 	bun.BaseModel `bun:"table:puskesmas"`
 
-	ID         string    `bun:"id,pk,type:uuid,nullzero" json:"id"`
+	ID         string    `bun:"id,pk,nullzero" json:"id"`
 	Nama       string    `bun:"nama" json:"nama"`
 	Kota       string    `bun:"kota" json:"kota"`
 	DibuatPada time.Time `bun:"dibuat_pada,nullzero,notnull,default:current_timestamp" json:"-"`
@@ -21,8 +21,8 @@ type Puskesmas struct {
 type Posyandu struct {
 	bun.BaseModel `bun:"table:posyandu"`
 
-	ID          string    `bun:"id,pk,type:uuid,nullzero" json:"id"`
-	PuskesmasID string    `bun:"puskesmas_id,type:uuid" json:"-"`
+	ID          string    `bun:"id,pk,nullzero" json:"id"`
+	PuskesmasID string    `bun:"puskesmas_id" json:"-"`
 	Nama        string    `bun:"nama" json:"nama"`
 	Kelurahan   *string   `bun:"kelurahan" json:"kelurahan"`
 	DibuatPada  time.Time `bun:"dibuat_pada,nullzero,notnull,default:current_timestamp" json:"-"`
@@ -31,8 +31,8 @@ type Posyandu struct {
 type Petugas struct {
 	bun.BaseModel `bun:"table:petugas"`
 
-	ID           string    `bun:"id,pk,type:uuid,nullzero" json:"id"`
-	PuskesmasID  string    `bun:"puskesmas_id,type:uuid" json:"puskesmas_id"`
+	ID           string    `bun:"id,pk,nullzero" json:"id"`
+	PuskesmasID  string    `bun:"puskesmas_id" json:"puskesmas_id"`
 	Nama         string    `bun:"nama" json:"nama"`
 	Email        string    `bun:"email" json:"email"`
 	PasswordHash string    `bun:"password_hash" json:"-"`
@@ -46,9 +46,9 @@ type Petugas struct {
 type AuditRun struct {
 	bun.BaseModel `bun:"table:audit_run"`
 
-	ID                 string    `bun:"id,pk,type:uuid,nullzero"`
-	PosyanduID         string    `bun:"posyandu_id,type:uuid"`
-	PetugasID          string    `bun:"petugas_id,type:uuid"`
+	ID                 string    `bun:"id,pk,nullzero"`
+	PosyanduID         string    `bun:"posyandu_id"`
+	PetugasID          string    `bun:"petugas_id"`
 	Periode            string    `bun:"periode,type:date"` // YYYY-MM-01
 	JumlahSampel       int       `bun:"jumlah_sampel"`
 	JumlahTercatatAsik int       `bun:"jumlah_tercatat_asik"`
