@@ -1,0 +1,15 @@
+# rahasia
+.env
+*.env.local
+
+# build
+frontend/node_modules/
+frontend/dist/
+backend/selaras
+backend/selaras.exe
+
+# data tiruan / data balita jangan pernah di-commit
+frontend/data-tiruan/
+*.xlsx
+*.xls
+*.csv
