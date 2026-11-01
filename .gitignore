@@ -3,6 +3,7 @@
 *.env.local
 
 # build
+.postman
 frontend/node_modules/
 frontend/dist/
 backend/selaras
