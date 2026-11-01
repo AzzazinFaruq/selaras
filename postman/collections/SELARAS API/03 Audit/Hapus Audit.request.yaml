@@ -1,0 +1,21 @@
+$kind: http-request
+name: "Hapus Audit"
+description: |-
+  Hanya pembuatnya dan hanya dalam 24 jam sejak dibuat. Audit tidak bisa di-update: kalau salah, hapus lalu ulang.
+
+  **Respons 200**
+  ```json
+  { "message": "Audit dihapus" }
+  ```
+
+  Gagal: 404 (tidak ada, bukan milikmu, atau sudah lewat 24 jam).
+method: DELETE
+url: "{{baseUrl}}/api/audit/{{auditId}}"
+order: 5000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status 200', function () {
+          pm.response.to.have.status(200);
+      });

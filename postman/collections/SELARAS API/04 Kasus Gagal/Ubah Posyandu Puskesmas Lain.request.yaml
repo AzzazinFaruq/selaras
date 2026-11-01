@@ -1,0 +1,26 @@
+$kind: http-request
+name: "Ubah Posyandu Puskesmas Lain"
+description: |-
+  Isolasi antar puskesmas pada operasi ubah.
+method: PUT
+url: "{{baseUrl}}/api/posyandu/{{posyanduLainId}}"
+order: 6000
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "nama": "Diretas"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status 404', function () {
+          pm.response.to.have.status(404);
+      });
+
+      pm.test('Ada pesan error', function () {
+          pm.expect(pm.response.json().error).to.be.a('string').and.not.empty;
+      });

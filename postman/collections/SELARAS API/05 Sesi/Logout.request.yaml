@@ -1,0 +1,25 @@
+$kind: http-request
+name: "Logout"
+description: |-
+  Body `{}` tetap wajib karena POST harus JSON. Menaikkan `token_versi`, sehingga token lama di semua perangkat petugas ini ikut tidak berlaku.
+
+  **Respons 200**
+  ```json
+  { "message": "Logout berhasil" }
+  ```
+method: POST
+url: "{{baseUrl}}/api/logout"
+order: 2000
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {}
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status 200', function () {
+          pm.response.to.have.status(200);
+      });

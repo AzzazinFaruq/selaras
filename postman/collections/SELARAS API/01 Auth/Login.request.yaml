@@ -1,0 +1,63 @@
+$kind: http-request
+name: "Login"
+description: |-
+  Menukar email dan password dengan cookie sesi (berlaku 8 jam). Token **tidak pernah** ada di body respons. Dibatasi 10 percobaan per 15 menit per IP (429), termasuk yang berhasil.
+
+  **Respons 200**
+  ```json
+  {
+    "user": {
+      "id": "06be2dcf-5615-53c4-a30a-a7bca59b2a46",
+      "nama": "Administrator SELARASS",
+      "email": "admin@selarass.id",
+      "puskesmas": {
+        "id": "f8949f27-46b2-5789-8b91-96c17ef3577d",
+        "nama": "Puskesmas Dinoyo",
+        "kota": "Kota Malang"
+      }
+    }
+  }
+  ```
+
+  Gagal: 400 (input kosong), 401 (email/password salah atau akun nonaktif), 429 (terlalu banyak percobaan).
+method: POST
+url: "{{baseUrl}}/api/login"
+order: 2000
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "{{email}}",
+      "password": "{{password}}"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status 200', function () {
+          pm.response.to.have.status(200);
+      });
+
+      const body = pm.response.json();
+
+      pm.test('Token tidak ada di body', function () {
+          pm.expect(pm.response.text()).to.not.include('eyJ');
+          pm.expect(body).to.not.have.property('token');
+      });
+
+      pm.test('Hash password tidak bocor', function () {
+          pm.expect(body.user).to.not.have.property('password_hash');
+      });
+
+      pm.test('Cookie HttpOnly dan SameSite=Strict', function () {
+          const c = pm.response.headers.get('Set-Cookie').toLowerCase();
+          pm.expect(c).to.include('selaras_token=');
+          pm.expect(c).to.include('httponly');
+          pm.expect(c).to.include('samesite=strict');
+      });
+
+      pm.test('Profil memuat puskesmas', function () {
+          pm.expect(body.user.puskesmas.nama).to.be.a('string');
+      });

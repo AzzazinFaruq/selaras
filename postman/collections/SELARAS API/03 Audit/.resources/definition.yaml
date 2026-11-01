@@ -1,0 +1,5 @@
+$kind: collection
+name: "03 Audit"
+description: |-
+  Inti API. Rekonsiliasi berjalan di browser; server hanya menerima angka agregat, dan body dibatasi 16 KB sehingga file register/ASIK tidak mungkin terkirim. Persen dihitung MySQL (generated column).
+order: 3000

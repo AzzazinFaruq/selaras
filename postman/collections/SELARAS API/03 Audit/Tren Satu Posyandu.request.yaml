@@ -1,0 +1,27 @@
+$kind: http-request
+name: "Tren Satu Posyandu"
+description: |-
+  Sama dengan Tren Semua Posyandu, difilter dengan query `posyandu_id`. Posyandu milik puskesmas lain menghasilkan daftar kosong. Gagal: 400 bila `posyandu_id` bukan UUID.
+method: GET
+url: "{{baseUrl}}/api/tren?posyandu_id={{posyanduBaruId}}"
+order: 3000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status 200', function () {
+          pm.response.to.have.status(200);
+      });
+
+      const data = pm.response.json().data;
+
+      pm.test('Satu baris untuk audit yang baru disimpan', function () {
+          pm.expect(data).to.have.lengthOf(1);
+          pm.expect(data[0].periode).to.eql(pm.environment.get('periode'));
+      });
+
+      pm.test('Persen dihitung basis data (Tabel L.1)', function () {
+          pm.expect(data[0].persen_kelengkapan).to.eql(85);
+          pm.expect(data[0].persen_kesesuaian).to.eql(82.35);
+          pm.expect(data[0].persen_ketepatan).to.eql(76.47);
+      });

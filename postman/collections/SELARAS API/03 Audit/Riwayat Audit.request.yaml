@@ -1,0 +1,42 @@
+$kind: http-request
+name: "Riwayat Audit"
+description: |-
+  Semua audit puskesmas ini termasuk audit ulang, terbaru dulu, maksimal 200 baris. `bisa_dihapus` bernilai true hanya untuk audit buatan sendiri yang umurnya kurang dari 24 jam.
+
+  **Respons 200**
+  ```json
+  {
+    "data": [
+      {
+        "id": "<uuid>",
+        "posyandu_nama": "Posyandu Melati 1",
+        "periode": "2026-10",
+        "jumlah_sampel": 20,
+        "persen_kelengkapan": 85,
+        "persen_kesesuaian": 82.35,
+        "persen_ketepatan": 76.47,
+        "petugas_nama": "Administrator SELARASS",
+        "catatan": "uji dari Postman",
+        "dibuat_pada": "2026-11-02T03:00:00Z",
+        "bisa_dihapus": true
+      }
+    ]
+  }
+  ```
+method: GET
+url: "{{baseUrl}}/api/audit"
+order: 4000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status 200', function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test('Audit yang baru disimpan bisa dihapus', function () {
+          const id = pm.collectionVariables.get('auditId');
+          const baris = pm.response.json().data.find((a) => a.id === id);
+          pm.expect(baris, 'audit ada di riwayat').to.be.an('object');
+          pm.expect(baris.bisa_dihapus).to.eql(true);
+      });

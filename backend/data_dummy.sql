@@ -1,114 +1,194 @@
--- =====================================================================
--- SELARAS - data dummy untuk development / demo (MySQL 8)
---
--- CARA PAKAI
---   1. Jalankan backend sekali (mis. `go run . daftar`) supaya tabel dibuat.
---   2. Impor file ini ke database aplikasi, misalnya:
---        mysql -u selaras -p selaras < data_dummy.sql
---      atau buka di HeidiSQL lalu Run (F9).
---   File ini aman dijalankan berulang: data dummy lama (ID tetap di bawah)
---   dihapus dulu lalu dibuat ulang. Data lain tidak disentuh.
---
--- AKUN LOGIN (semua password: SelarasDemo2026!)
---   admin@selaras.test   Admin SELARAS      Puskesmas Demo Sukolilo
---   rina@selaras.test    Rina (petugas gizi) Puskesmas Demo Sukolilo
---   budi@selaras.test    Budi (petugas gizi) Puskesmas Demo Mulyorejo
---   lama@selaras.test    nonaktif - login DITOLAK (contoh akun dinonaktifkan)
---
---   Aplikasi tidak punya peran admin di web. "admin@selaras.test" adalah
---   petugas biasa untuk dicoba. Tugas admin (buat puskesmas/petugas, reset
---   password, nonaktifkan) dilakukan lewat CLI di server: ./selaras daftar
---
--- JANGAN dipakai di produksi. Password di atas tertulis di file ini.
--- Hapus data dummy sebelum go-live (jalankan bagian HAPUS saja).
---
--- ISI
---   2 puskesmas, 5 posyandu, 4 petugas, 28 audit (Mei - Okt 2026):
---   * Melati: tren membaik; September punya audit ulang (dashboard memakai
---     yang terbaru); Oktober dibuat 2 jam lalu oleh admin -> bisa dihapus.
---   * Anggrek: posyandu baru, audit mulai Juli.
---   * Dahlia: tidak diaudit Agustus (celah di grafik).
---   * Kenanga/Dahlia: audit Mei-Juni dibuat petugas yang kini nonaktif.
---   * Login rina vs budi: data puskesmas lain tidak terlihat (isolasi).
--- =====================================================================
+-- Data dummy SELARASS — dijalankan SETELAH selarass.sql
+-- Akun admin : admin@selarass.id / Admin@12345
+-- Akun petugas: <email> / Petugas@123  (hash bcrypt cost 10)
 
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
 START TRANSACTION;
 
--- ---------------------------------------------------------------------
--- HAPUS data dummy lama (urutan mengikuti foreign key)
--- ---------------------------------------------------------------------
-DELETE FROM audit_run
- WHERE posyandu_id IN (SELECT id FROM posyandu WHERE puskesmas_id IN ('11111111-0000-4000-8000-000000000001', '11111111-0000-4000-8000-000000000002'))
-    OR petugas_id  IN (SELECT id FROM petugas  WHERE puskesmas_id IN ('11111111-0000-4000-8000-000000000001', '11111111-0000-4000-8000-000000000002'));
-DELETE FROM petugas   WHERE puskesmas_id IN ('11111111-0000-4000-8000-000000000001', '11111111-0000-4000-8000-000000000002')
-    OR email IN ('admin@selaras.test', 'rina@selaras.test', 'budi@selaras.test', 'lama@selaras.test');
-DELETE FROM posyandu  WHERE puskesmas_id IN ('11111111-0000-4000-8000-000000000001', '11111111-0000-4000-8000-000000000002');
-DELETE FROM puskesmas WHERE id IN ('11111111-0000-4000-8000-000000000001', '11111111-0000-4000-8000-000000000002');
+DELETE FROM audit_run;
+DELETE FROM petugas;
+DELETE FROM posyandu;
+DELETE FROM puskesmas;
 
--- ---------------------------------------------------------------------
--- puskesmas
--- ---------------------------------------------------------------------
 INSERT INTO puskesmas (id, nama, kota, dibuat_pada) VALUES
-  ('11111111-0000-4000-8000-000000000001', 'Puskesmas Demo Sukolilo',  'Surabaya', '2026-04-01 08:00:00.000'),
-  ('11111111-0000-4000-8000-000000000002', 'Puskesmas Demo Mulyorejo', 'Surabaya', '2026-04-01 08:00:00.000');
+('f8949f27-46b2-5789-8b91-96c17ef3577d', 'Puskesmas Dinoyo', 'Kota Malang', '2026-01-02 08:00:00.000'),
+('437170db-93d8-5eae-9144-85188d655825', 'Puskesmas Kendalkerep', 'Kota Malang', '2026-01-02 08:00:00.000'),
+('9a9e266d-ff5d-506e-8add-04ab09b8c5fc', 'Puskesmas Mulyorejo', 'Kota Surabaya', '2026-01-02 08:00:00.000');
 
--- ---------------------------------------------------------------------
--- posyandu
--- ---------------------------------------------------------------------
 INSERT INTO posyandu (id, puskesmas_id, nama, kelurahan, dibuat_pada) VALUES
-  ('22222222-0000-4000-8000-0000000000a1', '11111111-0000-4000-8000-000000000001', 'Melati', 'Keputih', '2026-04-02 08:00:00.000'),
-  ('22222222-0000-4000-8000-0000000000a2', '11111111-0000-4000-8000-000000000001', 'Mawar', 'Gebang Putih', '2026-04-02 08:00:00.000'),
-  ('22222222-0000-4000-8000-0000000000a3', '11111111-0000-4000-8000-000000000001', 'Anggrek', 'Klampis Ngasem', '2026-04-02 08:00:00.000'),
-  ('22222222-0000-4000-8000-0000000000b1', '11111111-0000-4000-8000-000000000002', 'Kenanga', 'Kalisari', '2026-04-02 08:00:00.000'),
-  ('22222222-0000-4000-8000-0000000000b2', '11111111-0000-4000-8000-000000000002', 'Dahlia', 'Dukuh Sutorejo', '2026-04-02 08:00:00.000');
+('acf5905f-f86d-586e-a396-91f81994f931', 'f8949f27-46b2-5789-8b91-96c17ef3577d', 'Posyandu Melati 1', 'Dinoyo', '2026-01-05 09:00:00.000'),
+('1cbdec53-88bc-5997-b8c1-bef746fa46b4', 'f8949f27-46b2-5789-8b91-96c17ef3577d', 'Posyandu Melati 2', 'Dinoyo', '2026-01-05 09:00:00.000'),
+('2920fd38-aca6-587f-ad4d-dea331a9de4f', 'f8949f27-46b2-5789-8b91-96c17ef3577d', 'Posyandu Mawar', 'Merjosari', '2026-01-05 09:00:00.000'),
+('a77a91a7-a84e-5aa1-8238-4c2410a5e4fe', 'f8949f27-46b2-5789-8b91-96c17ef3577d', 'Posyandu Anggrek', 'Tlogomas', '2026-01-05 09:00:00.000'),
+('8d7ecd19-be4d-5e1e-933f-8f333afc7236', 'f8949f27-46b2-5789-8b91-96c17ef3577d', 'Posyandu Kenanga', 'Sumbersari', '2026-01-05 09:00:00.000'),
+('c31cbef8-13e8-51e6-afcd-6b3f85e7d805', '437170db-93d8-5eae-9144-85188d655825', 'Posyandu Cempaka', 'Polehan', '2026-01-05 09:00:00.000'),
+('a2cf43be-4a64-5778-9a2e-525b84d55f11', '437170db-93d8-5eae-9144-85188d655825', 'Posyandu Dahlia', 'Kesatrian', '2026-01-05 09:00:00.000'),
+('41f483ad-86d3-574f-bb9e-78ef62eaddc0', '437170db-93d8-5eae-9144-85188d655825', 'Posyandu Flamboyan', 'Purwantoro', '2026-01-05 09:00:00.000'),
+('3e94f159-07f6-5403-a415-05013fa3c663', '437170db-93d8-5eae-9144-85188d655825', 'Posyandu Teratai', 'Bunulrejo', '2026-01-05 09:00:00.000'),
+('1546d67f-05bb-50b2-b456-5aed38f16b42', '9a9e266d-ff5d-506e-8add-04ab09b8c5fc', 'Posyandu Seroja', 'Mulyorejo', '2026-01-05 09:00:00.000'),
+('6e8c8a0e-8245-5e88-bdfd-5fa0e2773c60', '9a9e266d-ff5d-506e-8add-04ab09b8c5fc', 'Posyandu Bougenville', 'Kalisari', '2026-01-05 09:00:00.000'),
+('62ed2e08-49a5-5c0a-8cb4-235c5938544d', '9a9e266d-ff5d-506e-8add-04ab09b8c5fc', 'Posyandu Kamboja', 'Dukuh Sutorejo', '2026-01-05 09:00:00.000'),
+('5661571d-83ce-56a5-bc6c-af77d7a784e4', '9a9e266d-ff5d-506e-8add-04ab09b8c5fc', 'Posyandu Sakura', 'Kejawan Putih Tambak', '2026-01-05 09:00:00.000');
 
--- ---------------------------------------------------------------------
--- petugas (password_hash = bcrypt cost 12 dari "SelarasDemo2026!")
--- ---------------------------------------------------------------------
 INSERT INTO petugas (id, puskesmas_id, nama, email, password_hash, aktif, token_versi, dibuat_pada) VALUES
-  ('33333333-0000-4000-8000-000000000001', '11111111-0000-4000-8000-000000000001', 'Admin SELARAS',         'admin@selaras.test', '$2a$12$YGOqtAaTPQCfHCtB1EbAq.qxFcdPRLp.kDOQG2bZJ70SE3mEzd6wy', TRUE,  0, '2026-04-01 08:30:00.000'),
-  ('33333333-0000-4000-8000-000000000002',  '11111111-0000-4000-8000-000000000001', 'Rina Wulandari',        'rina@selaras.test',  '$2a$12$YGOqtAaTPQCfHCtB1EbAq.qxFcdPRLp.kDOQG2bZJ70SE3mEzd6wy', TRUE,  0, '2026-04-01 08:30:00.000'),
-  ('33333333-0000-4000-8000-000000000003',  '11111111-0000-4000-8000-000000000002', 'Budi Santoso',          'budi@selaras.test',  '$2a$12$YGOqtAaTPQCfHCtB1EbAq.qxFcdPRLp.kDOQG2bZJ70SE3mEzd6wy', TRUE,  0, '2026-04-01 08:30:00.000'),
-  ('33333333-0000-4000-8000-000000000004',  '11111111-0000-4000-8000-000000000002', 'Sari Utami (nonaktif)', 'lama@selaras.test',  '$2a$12$YGOqtAaTPQCfHCtB1EbAq.qxFcdPRLp.kDOQG2bZJ70SE3mEzd6wy', FALSE, 1, '2026-04-01 08:30:00.000');
+('06be2dcf-5615-53c4-a30a-a7bca59b2a46', 'f8949f27-46b2-5789-8b91-96c17ef3577d', 'Administrator SELARASS', 'admin@selarass.id', '$2b$10$gsP1gsGW1LLnlSk3ho4Lz.a/Xp69GCCIMGWzC3XnSYwIbIJLbKIte', 1, 0, '2026-01-05 10:00:00.000'),
+('f646dc12-bc06-515b-9bbf-b84ab5a959dd', 'f8949f27-46b2-5789-8b91-96c17ef3577d', 'Siti Nurhaliza', 'siti.nurhaliza@selarass.id', '$2b$10$rzLq2BDfJJq/42PEJ5EUDuGJvVE0WOqs6lLIbQ.LgTdBqk2U2Jq66', 1, 0, '2026-01-05 10:00:00.000'),
+('deb9156a-8c33-5c78-9b66-0c8418e7e426', 'f8949f27-46b2-5789-8b91-96c17ef3577d', 'Budi Santoso', 'budi.santoso@selarass.id', '$2b$10$CwyYBYj4TDK3y6ISgx1D6Ow2T3TvmpmbkixEynTQ8AvpsCKyecTIu', 1, 0, '2026-01-05 10:00:00.000'),
+('983a913d-c92d-58b6-9b0c-92d71c8ea85f', '437170db-93d8-5eae-9144-85188d655825', 'Dewi Lestari', 'dewi.lestari@selarass.id', '$2b$10$StO28uxG71h/0Y3A5LfBfO8XlWB1B19lfgsLZu1fQDeuvS43Zo.Vm', 1, 0, '2026-01-05 10:00:00.000'),
+('43dffafa-3cbc-59bc-bfd8-efc32d3ffd7e', '437170db-93d8-5eae-9144-85188d655825', 'Agus Prasetyo', 'agus.prasetyo@selarass.id', '$2b$10$Ek4yQNWVjFNpz1Aucp4yQOSFdxyQwzWOsS0wCYi5YSX.kLa7hDhQK', 1, 0, '2026-01-05 10:00:00.000'),
+('de5fffde-ba46-5ccb-8313-5eada83f2be0', '9a9e266d-ff5d-506e-8add-04ab09b8c5fc', 'Rina Wulandari', 'rina.wulandari@selarass.id', '$2b$10$HK4hgFkYd0w7HjGmAXI1leFMU9jpaUGnwp00HAgeXrEmC.FQMo2VC', 1, 0, '2026-01-05 10:00:00.000'),
+('a706fe36-96c9-5cb1-add5-5a25e511e5fb', '9a9e266d-ff5d-506e-8add-04ab09b8c5fc', 'Hendra Wijaya', 'hendra.wijaya@selarass.id', '$2b$10$BU8g2xMAg9mIoSBYZqIiz.WFAvxsDfO1kYkfQ7UHo38PTYSBUJ652', 0, 0, '2026-01-05 10:00:00.000');
 
--- ---------------------------------------------------------------------
--- audit_run (kolom persen_* dihitung otomatis oleh MySQL)
--- Komentar di ujung baris: kelengkapan / kesesuaian / ketepatan
--- ---------------------------------------------------------------------
-INSERT INTO audit_run
-  (id, posyandu_id, petugas_id, periode, jumlah_sampel, jumlah_tercatat_asik, jml_tidak_ada_di_asik,
-   jml_tidak_sesuai, jml_selisih_tanggal, jml_selisih_bb, jml_selisih_tb, jml_terlambat, catatan, dibuat_pada) VALUES
-  ('44444444-0000-4000-8000-000000000001', '22222222-0000-4000-8000-0000000000a1', '33333333-0000-4000-8000-000000000001', '2026-05-01', 20, 14, 6, 3, 1, 2, 1, 6, 'sampel acak dari 58 balita', '2026-06-08 09:15:00.000'), -- Melati 2026-05: 70.00 / 78.57 / 57.14
-  ('44444444-0000-4000-8000-000000000002', '22222222-0000-4000-8000-0000000000a1', '33333333-0000-4000-8000-000000000002', '2026-06-01', 18, 13, 5, 2, 0, 2, 0, 4, NULL, '2026-07-08 09:15:00.000'), -- Melati 2026-06: 72.22 / 84.62 / 69.23
-  ('44444444-0000-4000-8000-000000000003', '22222222-0000-4000-8000-0000000000a1', '33333333-0000-4000-8000-000000000001', '2026-07-01', 20, 16, 4, 3, 1, 2, 1, 5, NULL, '2026-08-08 09:15:00.000'), -- Melati 2026-07: 80.00 / 81.25 / 68.75
-  ('44444444-0000-4000-8000-000000000004', '22222222-0000-4000-8000-0000000000a1', '33333333-0000-4000-8000-000000000002', '2026-08-01', 15, 13, 2, 2, 0, 2, 0, 3, 'sampel acak dari 58 balita', '2026-09-08 09:15:00.000'), -- Melati 2026-08: 86.67 / 84.62 / 76.92
-  ('44444444-0000-4000-8000-000000000005', '22222222-0000-4000-8000-0000000000a1', '33333333-0000-4000-8000-000000000002', '2026-09-01', 20, 13, 7, 4, 1, 2, 2, 6, 'salah pemetaan kolom tanggal, diulang', '2026-10-06 10:00:00.000'), -- Melati 2026-09: 65.00 / 69.23 / 53.85
-  ('44444444-0000-4000-8000-000000000006', '22222222-0000-4000-8000-0000000000a1', '33333333-0000-4000-8000-000000000001', '2026-09-01', 20, 18, 2, 2, 0, 2, 1, 4, 'audit ulang setelah perbaikan pemetaan kolom', '2026-10-07 09:00:00.000'), -- Melati 2026-09: 90.00 / 88.89 / 77.78
-  ('44444444-0000-4000-8000-000000000007', '22222222-0000-4000-8000-0000000000a1', '33333333-0000-4000-8000-000000000001', '2026-10-01', 20, 19, 1, 2, 0, 2, 0, 3, 'audit terbaru, masih bisa dihapus 24 jam', NOW(3) - INTERVAL 2 HOUR), -- Melati 2026-10: 95.00 / 89.47 / 84.21
-  ('44444444-0000-4000-8000-000000000008', '22222222-0000-4000-8000-0000000000a2', '33333333-0000-4000-8000-000000000001', '2026-05-01', 18, 15, 3, 2, 0, 2, 1, 3, 'sampel acak dari 41 balita', '2026-06-09 09:15:00.000'), -- Mawar 2026-05: 83.33 / 86.67 / 80.00
-  ('44444444-0000-4000-8000-000000000009', '22222222-0000-4000-8000-0000000000a2', '33333333-0000-4000-8000-000000000002', '2026-06-01', 20, 18, 2, 1, 0, 1, 0, 4, NULL, '2026-07-09 09:15:00.000'), -- Mawar 2026-06: 90.00 / 94.44 / 77.78
-  ('44444444-0000-4000-8000-000000000010', '22222222-0000-4000-8000-0000000000a2', '33333333-0000-4000-8000-000000000001', '2026-07-01', 15, 13, 2, 1, 0, 1, 0, 2, NULL, '2026-08-09 09:15:00.000'), -- Mawar 2026-07: 86.67 / 92.31 / 84.62
-  ('44444444-0000-4000-8000-000000000011', '22222222-0000-4000-8000-0000000000a2', '33333333-0000-4000-8000-000000000002', '2026-08-01', 20, 19, 1, 1, 0, 1, 0, 2, 'sampel acak dari 41 balita', '2026-09-09 09:15:00.000'), -- Mawar 2026-08: 95.00 / 94.74 / 89.47
-  ('44444444-0000-4000-8000-000000000012', '22222222-0000-4000-8000-0000000000a2', '33333333-0000-4000-8000-000000000001', '2026-09-01', 20, 19, 1, 0, 0, 0, 0, 1, NULL, '2026-10-09 09:15:00.000'), -- Mawar 2026-09: 95.00 / 100.00 / 94.74
-  ('44444444-0000-4000-8000-000000000013', '22222222-0000-4000-8000-0000000000a2', '33333333-0000-4000-8000-000000000002', '2026-10-01', 20, 19, 1, 0, 0, 0, 0, 0, NULL, '2026-10-27 09:15:00.000'), -- Mawar 2026-10: 95.00 / 100.00 / 100.00
-  ('44444444-0000-4000-8000-000000000014', '22222222-0000-4000-8000-0000000000a3', '33333333-0000-4000-8000-000000000001', '2026-07-01', 20, 15, 5, 4, 1, 2, 2, 5, NULL, '2026-08-10 09:15:00.000'), -- Anggrek 2026-07: 75.00 / 73.33 / 66.67
-  ('44444444-0000-4000-8000-000000000015', '22222222-0000-4000-8000-0000000000a3', '33333333-0000-4000-8000-000000000002', '2026-08-01', 20, 17, 3, 4, 1, 2, 1, 5, 'sampel acak dari 35 balita', '2026-09-10 09:15:00.000'), -- Anggrek 2026-08: 85.00 / 76.47 / 70.59
-  ('44444444-0000-4000-8000-000000000016', '22222222-0000-4000-8000-0000000000a3', '33333333-0000-4000-8000-000000000001', '2026-09-01', 20, 19, 1, 3, 1, 2, 1, 5, NULL, '2026-10-10 09:15:00.000'), -- Anggrek 2026-09: 95.00 / 84.21 / 73.68
-  ('44444444-0000-4000-8000-000000000017', '22222222-0000-4000-8000-0000000000a3', '33333333-0000-4000-8000-000000000002', '2026-10-01', 18, 18, 0, 2, 0, 2, 0, 3, NULL, '2026-10-28 09:15:00.000'), -- Anggrek 2026-10: 100.00 / 88.89 / 83.33
-  ('44444444-0000-4000-8000-000000000018', '22222222-0000-4000-8000-0000000000b1', '33333333-0000-4000-8000-000000000004', '2026-05-01', 15, 11, 4, 2, 0, 2, 1, 4, 'sampel acak dari 64 balita', '2026-06-11 09:15:00.000'), -- Kenanga 2026-05: 73.33 / 81.82 / 63.64
-  ('44444444-0000-4000-8000-000000000019', '22222222-0000-4000-8000-0000000000b1', '33333333-0000-4000-8000-000000000004', '2026-06-01', 20, 16, 4, 3, 1, 2, 0, 4, NULL, '2026-07-11 09:15:00.000'), -- Kenanga 2026-06: 80.00 / 81.25 / 75.00
-  ('44444444-0000-4000-8000-000000000020', '22222222-0000-4000-8000-0000000000b1', '33333333-0000-4000-8000-000000000003', '2026-07-01', 20, 17, 3, 3, 1, 2, 1, 4, NULL, '2026-08-11 09:15:00.000'), -- Kenanga 2026-07: 85.00 / 82.35 / 76.47
-  ('44444444-0000-4000-8000-000000000021', '22222222-0000-4000-8000-0000000000b1', '33333333-0000-4000-8000-000000000003', '2026-08-01', 20, 18, 2, 1, 0, 1, 0, 3, 'sampel acak dari 64 balita', '2026-09-11 09:15:00.000'), -- Kenanga 2026-08: 90.00 / 94.44 / 83.33
-  ('44444444-0000-4000-8000-000000000022', '22222222-0000-4000-8000-0000000000b1', '33333333-0000-4000-8000-000000000003', '2026-09-01', 18, 17, 1, 1, 0, 1, 0, 3, NULL, '2026-10-11 09:15:00.000'), -- Kenanga 2026-09: 94.44 / 94.12 / 82.35
-  ('44444444-0000-4000-8000-000000000023', '22222222-0000-4000-8000-0000000000b1', '33333333-0000-4000-8000-000000000003', '2026-10-01', 20, 19, 1, 0, 0, 0, 0, 3, NULL, '2026-10-29 09:15:00.000'), -- Kenanga 2026-10: 95.00 / 100.00 / 84.21
-  ('44444444-0000-4000-8000-000000000024', '22222222-0000-4000-8000-0000000000b2', '33333333-0000-4000-8000-000000000004', '2026-05-01', 20, 18, 2, 3, 1, 2, 1, 4, 'sampel acak dari 29 balita', '2026-06-12 09:15:00.000'), -- Dahlia 2026-05: 90.00 / 83.33 / 77.78
-  ('44444444-0000-4000-8000-000000000025', '22222222-0000-4000-8000-0000000000b2', '33333333-0000-4000-8000-000000000004', '2026-06-01', 20, 18, 2, 2, 0, 2, 0, 3, NULL, '2026-07-12 09:15:00.000'), -- Dahlia 2026-06: 90.00 / 88.89 / 83.33
-  ('44444444-0000-4000-8000-000000000026', '22222222-0000-4000-8000-0000000000b2', '33333333-0000-4000-8000-000000000003', '2026-07-01', 20, 19, 1, 2, 0, 2, 1, 3, NULL, '2026-08-12 09:15:00.000'), -- Dahlia 2026-07: 95.00 / 89.47 / 84.21
-  ('44444444-0000-4000-8000-000000000027', '22222222-0000-4000-8000-0000000000b2', '33333333-0000-4000-8000-000000000003', '2026-09-01', 20, 18, 2, 1, 0, 1, 0, 1, NULL, '2026-10-12 09:15:00.000'), -- Dahlia 2026-09: 90.00 / 94.44 / 94.44
-  ('44444444-0000-4000-8000-000000000028', '22222222-0000-4000-8000-0000000000b2', '33333333-0000-4000-8000-000000000003', '2026-10-01', 15, 15, 0, 0, 0, 0, 0, 0, NULL, '2026-10-30 09:15:00.000'); -- Dahlia 2026-10: 100.00 / 100.00 / 100.00
+INSERT INTO audit_run (id, posyandu_id, petugas_id, periode, jumlah_sampel, jumlah_tercatat_asik, jml_tidak_ada_di_asik, jml_tidak_sesuai, jml_selisih_tanggal, jml_selisih_bb, jml_selisih_tb, jml_terlambat, catatan, dibuat_pada) VALUES
+('7950a986-6204-5cc7-989c-ad502ebe0945', 'acf5905f-f86d-586e-a396-91f81994f931', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-01-01', 18, 14, 4, 4, 0, 2, 2, 3, NULL, '2026-02-10 08:39:05.113'),
+('66700a74-7c74-5040-9899-0a2c2b4ef159', 'acf5905f-f86d-586e-a396-91f81994f931', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-02-01', 36, 27, 9, 6, 0, 4, 4, 6, 'Timbangan dikalibrasi ulang', '2026-03-25 12:01:54.727'),
+('e4210876-5a6d-5622-a8a0-feacb06407cf', 'acf5905f-f86d-586e-a396-91f81994f931', '06be2dcf-5615-53c4-a30a-a7bca59b2a46', '2026-03-01', 32, 25, 7, 5, 1, 1, 3, 4, NULL, '2026-04-19 08:36:14.784'),
+('ffb28884-01a0-56f3-8aad-23e1c9ad37f6', 'acf5905f-f86d-586e-a396-91f81994f931', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-03-01', 31, 25, 6, 6, 2, 3, 1, 3, 'Audit ulang setelah perbaikan data', '2026-04-14 15:51:56.411'),
+('9b83b9fe-8e3b-56fb-bd1d-d997c96c4247', 'acf5905f-f86d-586e-a396-91f81994f931', '06be2dcf-5615-53c4-a30a-a7bca59b2a46', '2026-04-01', 35, 25, 10, 9, 2, 5, 2, 7, 'Selisih TB karena alat ukur berbeda', '2026-05-19 12:28:59.988'),
+('5e899a8c-9711-56d9-8524-f9a900c821a5', 'acf5905f-f86d-586e-a396-91f81994f931', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-05-01', 23, 18, 5, 6, 2, 6, 1, 4, NULL, '2026-06-20 12:42:48.650'),
+('48cd71c2-c741-52df-af64-28fe025eb740', 'acf5905f-f86d-586e-a396-91f81994f931', 'deb9156a-8c33-5c78-9b66-0c8418e7e426', '2026-06-01', 44, 33, 11, 11, 0, 8, 3, 9, 'Timbangan dikalibrasi ulang', '2026-07-15 09:03:53.355'),
+('f61926e5-cce5-5f3a-afff-11ec18f687d6', 'acf5905f-f86d-586e-a396-91f81994f931', 'deb9156a-8c33-5c78-9b66-0c8418e7e426', '2026-07-01', 30, 24, 6, 4, 1, 3, 1, 4, NULL, '2026-08-16 13:29:38.238'),
+('84181ccd-36e0-5961-92b5-47215ce61235', 'acf5905f-f86d-586e-a396-91f81994f931', '06be2dcf-5615-53c4-a30a-a7bca59b2a46', '2026-08-01', 20, 17, 3, 2, 1, 0, 1, 3, NULL, '2026-09-09 15:45:43.898'),
+('b5549b58-12c9-556d-a202-01b4dcadb30f', 'acf5905f-f86d-586e-a396-91f81994f931', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-08-01', 21, 18, 3, 3, 0, 3, 1, 2, 'Audit ulang setelah perbaikan data', '2026-09-18 09:24:19.191'),
+('b9cad694-ad6f-5e51-b605-61381ca0158f', 'acf5905f-f86d-586e-a396-91f81994f931', '06be2dcf-5615-53c4-a30a-a7bca59b2a46', '2026-09-01', 28, 23, 5, 3, 0, 2, 1, 4, 'Sinyal lemah saat input ASIK', '2026-10-06 11:14:00.976'),
+('2d8f7f2e-b4dc-527b-89df-d195678e8df9', 'acf5905f-f86d-586e-a396-91f81994f931', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-10-01', 42, 37, 5, 6, 0, 3, 4, 4, NULL, '2026-11-01 09:06:00.000'),
+('e9a49b07-fbd6-5895-b78a-27fe265145d8', '1cbdec53-88bc-5997-b8c1-bef746fa46b4', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-01-01', 38, 35, 3, 3, 2, 0, 1, 1, 'Selisih TB karena alat ukur berbeda', '2026-02-11 12:04:00.421'),
+('1d43a63a-ed7b-5fb5-ad19-62903c53cb7c', '1cbdec53-88bc-5997-b8c1-bef746fa46b4', 'deb9156a-8c33-5c78-9b66-0c8418e7e426', '2026-02-01', 24, 22, 2, 1, 0, 0, 1, 2, 'Verifikasi silang dengan buku KIA', '2026-03-14 13:49:29.621'),
+('6071b341-3b06-5f04-a312-722bea92dcd2', '1cbdec53-88bc-5997-b8c1-bef746fa46b4', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-02-01', 27, 25, 2, 2, 0, 2, 0, 2, 'Audit ulang setelah perbaikan data', '2026-03-26 13:55:32.697'),
+('3f38ade3-7d35-5047-b455-fd1eb5008266', '1cbdec53-88bc-5997-b8c1-bef746fa46b4', 'deb9156a-8c33-5c78-9b66-0c8418e7e426', '2026-03-01', 37, 33, 4, 3, 2, 0, 1, 2, NULL, '2026-04-21 08:34:21.202'),
+('09e00343-1f10-5e56-9156-07a23ac7d280', '1cbdec53-88bc-5997-b8c1-bef746fa46b4', '06be2dcf-5615-53c4-a30a-a7bca59b2a46', '2026-04-01', 18, 17, 1, 0, 0, 0, 0, 0, 'Timbangan dikalibrasi ulang', '2026-05-22 12:01:27.592'),
+('52c2c525-3322-5046-8e0e-577ed593fe6d', '1cbdec53-88bc-5997-b8c1-bef746fa46b4', 'deb9156a-8c33-5c78-9b66-0c8418e7e426', '2026-04-01', 27, 26, 1, 0, 0, 0, 0, 0, 'Audit ulang setelah perbaikan data', '2026-05-12 10:11:34.029'),
+('ecd10b9b-13cf-509c-9992-3e5d6aec79e4', '1cbdec53-88bc-5997-b8c1-bef746fa46b4', '06be2dcf-5615-53c4-a30a-a7bca59b2a46', '2026-05-01', 19, 18, 1, 1, 1, 0, 0, 1, NULL, '2026-06-11 13:08:40.607'),
+('483ea0f9-0f8d-5d89-b4b4-fdac5356c474', '1cbdec53-88bc-5997-b8c1-bef746fa46b4', '06be2dcf-5615-53c4-a30a-a7bca59b2a46', '2026-06-01', 31, 31, 0, 0, 0, 0, 0, 0, 'Beberapa balita pindah domisili', '2026-07-19 13:03:42.860'),
+('ae60aef8-1550-5d76-b5d4-1d8206a31945', '1cbdec53-88bc-5997-b8c1-bef746fa46b4', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-07-01', 42, 42, 0, 0, 0, 0, 0, 0, 'Timbangan dikalibrasi ulang', '2026-08-15 13:50:14.575'),
+('e083ca0c-5c46-5966-b8d0-89f2ea541da3', '1cbdec53-88bc-5997-b8c1-bef746fa46b4', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-08-01', 29, 29, 0, 0, 0, 0, 0, 0, NULL, '2026-09-24 12:12:10.643'),
+('0eee4f28-0a8d-5485-8853-ca707c0454bb', '1cbdec53-88bc-5997-b8c1-bef746fa46b4', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-09-01', 45, 45, 0, 1, 0, 1, 0, 0, NULL, '2026-10-05 12:23:34.748'),
+('bf1f5ff8-b8a8-5e48-9c2a-153cbf8cf215', '1cbdec53-88bc-5997-b8c1-bef746fa46b4', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-09-01', 18, 18, 0, 0, 0, 0, 0, 0, 'Audit ulang setelah perbaikan data', '2026-10-11 12:36:02.978'),
+('81c58649-31ea-566e-aeda-36a71ffe2c14', '1cbdec53-88bc-5997-b8c1-bef746fa46b4', '06be2dcf-5615-53c4-a30a-a7bca59b2a46', '2026-10-01', 36, 36, 0, 0, 0, 0, 0, 0, 'Verifikasi silang dengan buku KIA', '2026-11-01 10:19:00.000'),
+('b3d3a20c-24d9-59d7-b2f8-6fe035b52304', '2920fd38-aca6-587f-ad4d-dea331a9de4f', '06be2dcf-5615-53c4-a30a-a7bca59b2a46', '2026-01-01', 24, 20, 4, 3, 1, 3, 0, 2, 'Timbangan dikalibrasi ulang', '2026-02-20 10:46:33.030'),
+('cbe2bbe0-d7cb-57ab-bd72-02e5f1922594', '2920fd38-aca6-587f-ad4d-dea331a9de4f', 'deb9156a-8c33-5c78-9b66-0c8418e7e426', '2026-02-01', 31, 28, 3, 4, 2, 1, 1, 1, NULL, '2026-03-13 15:06:55.857'),
+('872d1285-7163-5eb1-b8c4-eb6c4107563e', '2920fd38-aca6-587f-ad4d-dea331a9de4f', '06be2dcf-5615-53c4-a30a-a7bca59b2a46', '2026-03-01', 26, 23, 3, 3, 0, 2, 2, 2, 'Sinyal lemah saat input ASIK', '2026-04-21 13:05:04.797'),
+('17b008d1-50fb-5240-93dd-a8de51d5d1a8', '2920fd38-aca6-587f-ad4d-dea331a9de4f', '06be2dcf-5615-53c4-a30a-a7bca59b2a46', '2026-04-01', 20, 18, 2, 1, 0, 0, 1, 1, 'Sinyal lemah saat input ASIK', '2026-05-24 15:25:20.180'),
+('3565ea0c-9819-5a2e-a767-2017e1887fb5', '2920fd38-aca6-587f-ad4d-dea331a9de4f', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-05-01', 40, 35, 5, 4, 0, 2, 2, 3, 'Kader baru, input ASIK masih tertunda', '2026-06-06 13:17:53.887'),
+('ad8a59e7-a0e8-5100-8c23-01f63a95bc11', '2920fd38-aca6-587f-ad4d-dea331a9de4f', '06be2dcf-5615-53c4-a30a-a7bca59b2a46', '2026-06-01', 19, 16, 3, 2, 1, 0, 1, 1, 'Sinyal lemah saat input ASIK', '2026-07-03 13:43:26.344'),
+('4184299c-3fc0-5b21-a7b5-3e862f0cd4ed', '2920fd38-aca6-587f-ad4d-dea331a9de4f', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-07-01', 36, 36, 0, 0, 0, 0, 0, 0, NULL, '2026-08-16 13:41:21.061'),
+('b6b2825c-a1c1-588d-bcd9-74fd92808dac', '2920fd38-aca6-587f-ad4d-dea331a9de4f', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-08-01', 25, 22, 3, 3, 0, 2, 1, 1, 'Timbangan dikalibrasi ulang', '2026-09-10 09:42:54.964'),
+('db6def6d-9a5b-51c2-9df2-99e654b08c61', '2920fd38-aca6-587f-ad4d-dea331a9de4f', '06be2dcf-5615-53c4-a30a-a7bca59b2a46', '2026-09-01', 23, 20, 3, 3, 1, 2, 1, 1, 'Kader baru, input ASIK masih tertunda', '2026-10-10 15:13:38.689'),
+('58596a1a-4f15-5340-8aae-99e19c65baa9', '2920fd38-aca6-587f-ad4d-dea331a9de4f', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-10-01', 33, 30, 3, 3, 1, 3, 1, 3, 'Timbangan dikalibrasi ulang', '2026-11-01 11:16:00.000'),
+('47bb5bb5-eb1f-5130-9945-0c131e9890bc', 'a77a91a7-a84e-5aa1-8238-4c2410a5e4fe', 'deb9156a-8c33-5c78-9b66-0c8418e7e426', '2026-01-01', 40, 34, 6, 5, 0, 5, 2, 5, 'Data bulan lalu disusulkan', '2026-02-23 12:30:39.092'),
+('cf4328ff-824d-5b80-ae37-2fe03628135c', 'a77a91a7-a84e-5aa1-8238-4c2410a5e4fe', 'deb9156a-8c33-5c78-9b66-0c8418e7e426', '2026-02-01', 26, 24, 2, 2, 0, 1, 1, 2, 'Beberapa balita pindah domisili', '2026-03-19 14:40:06.947'),
+('83648938-2b9a-52bc-b4e7-da6f16b1dcc1', 'a77a91a7-a84e-5aa1-8238-4c2410a5e4fe', 'deb9156a-8c33-5c78-9b66-0c8418e7e426', '2026-03-01', 42, 37, 5, 4, 0, 2, 3, 4, NULL, '2026-04-20 11:09:38.564'),
+('48f7eb7c-6a79-5764-933e-6286074f1345', 'a77a91a7-a84e-5aa1-8238-4c2410a5e4fe', '06be2dcf-5615-53c4-a30a-a7bca59b2a46', '2026-04-01', 36, 34, 2, 2, 1, 0, 1, 1, NULL, '2026-05-11 13:08:29.172'),
+('d9a55f3f-3f3d-5820-8b6a-e846e08150e0', 'a77a91a7-a84e-5aa1-8238-4c2410a5e4fe', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-05-01', 34, 32, 2, 2, 0, 0, 2, 1, NULL, '2026-06-20 09:29:43.765'),
+('73b4a192-5bf6-52db-8a9c-e03c5674116b', 'a77a91a7-a84e-5aa1-8238-4c2410a5e4fe', '06be2dcf-5615-53c4-a30a-a7bca59b2a46', '2026-06-01', 30, 29, 1, 0, 0, 0, 0, 0, 'Data bulan lalu disusulkan', '2026-07-21 12:21:48.028'),
+('1207901c-e16f-5dd9-bb3a-ee72d3b3ca99', 'a77a91a7-a84e-5aa1-8238-4c2410a5e4fe', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-07-01', 28, 26, 2, 1, 0, 1, 0, 2, 'Selisih TB karena alat ukur berbeda', '2026-08-18 11:23:10.548'),
+('740270ca-ac99-58d2-8c73-e8181088e7e5', 'a77a91a7-a84e-5aa1-8238-4c2410a5e4fe', 'deb9156a-8c33-5c78-9b66-0c8418e7e426', '2026-08-01', 24, 23, 1, 1, 0, 1, 0, 1, 'Beberapa balita pindah domisili', '2026-09-18 09:56:57.216'),
+('bc008653-259e-5dfe-bd3f-acaa178bf8bb', 'a77a91a7-a84e-5aa1-8238-4c2410a5e4fe', 'deb9156a-8c33-5c78-9b66-0c8418e7e426', '2026-09-01', 34, 32, 2, 2, 1, 2, 0, 2, 'Kader baru, input ASIK masih tertunda', '2026-10-16 08:35:09.663'),
+('7bf73a1a-baaa-50b7-be34-02bcca16b919', 'a77a91a7-a84e-5aa1-8238-4c2410a5e4fe', '06be2dcf-5615-53c4-a30a-a7bca59b2a46', '2026-09-01', 26, 25, 1, 1, 0, 1, 0, 1, 'Audit ulang setelah perbaikan data', '2026-10-16 15:08:06.812'),
+('964a648e-1cf7-5db8-9d23-dd94c585a280', 'a77a91a7-a84e-5aa1-8238-4c2410a5e4fe', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-10-01', 35, 33, 2, 2, 0, 0, 2, 1, 'Kader baru, input ASIK masih tertunda', '2026-11-01 08:52:00.000'),
+('a35a70eb-5583-57d0-9ef6-0c24618965bc', '8d7ecd19-be4d-5e1e-933f-8f333afc7236', '06be2dcf-5615-53c4-a30a-a7bca59b2a46', '2026-01-01', 33, 24, 9, 4, 1, 2, 3, 2, NULL, '2026-02-05 10:34:55.261'),
+('61f3d487-c38a-5afe-86cc-d42fa8cb853a', '8d7ecd19-be4d-5e1e-933f-8f333afc7236', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-01-01', 17, 13, 4, 4, 0, 2, 3, 3, 'Audit ulang setelah perbaikan data', '2026-02-27 11:25:15.526'),
+('4cfafdd8-fc1a-54d7-8a62-c9a430b0c7e6', '8d7ecd19-be4d-5e1e-933f-8f333afc7236', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-02-01', 21, 14, 7, 5, 2, 2, 1, 4, 'Selisih TB karena alat ukur berbeda', '2026-03-12 11:55:33.321'),
+('4bc0b7ce-eb27-5a6b-a9de-770e97daf9f3', '8d7ecd19-be4d-5e1e-933f-8f333afc7236', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-03-01', 42, 31, 11, 8, 3, 4, 3, 8, NULL, '2026-04-19 12:58:23.086'),
+('a93a7c85-b465-50f9-9ce0-0c6a6e6396ff', '8d7ecd19-be4d-5e1e-933f-8f333afc7236', '06be2dcf-5615-53c4-a30a-a7bca59b2a46', '2026-04-01', 35, 27, 8, 7, 2, 4, 2, 7, 'Kader baru, input ASIK masih tertunda', '2026-05-04 12:05:10.667'),
+('7e1aeeec-7f99-5fef-bea7-c939d55981e6', '8d7ecd19-be4d-5e1e-933f-8f333afc7236', '06be2dcf-5615-53c4-a30a-a7bca59b2a46', '2026-04-01', 24, 19, 5, 5, 1, 3, 3, 2, 'Audit ulang setelah perbaikan data', '2026-05-16 11:34:25.475'),
+('881a76c7-1703-55ea-b4ea-e35945aa11c8', '8d7ecd19-be4d-5e1e-933f-8f333afc7236', 'deb9156a-8c33-5c78-9b66-0c8418e7e426', '2026-05-01', 29, 21, 8, 6, 1, 5, 1, 5, NULL, '2026-06-07 11:52:52.485'),
+('45ba3dcd-4e51-5c45-ac89-c1a17074c955', '8d7ecd19-be4d-5e1e-933f-8f333afc7236', 'deb9156a-8c33-5c78-9b66-0c8418e7e426', '2026-06-01', 18, 14, 4, 2, 0, 2, 0, 3, NULL, '2026-07-13 13:05:47.698'),
+('5b6b628b-263d-51fc-8957-801547b203a6', '8d7ecd19-be4d-5e1e-933f-8f333afc7236', 'deb9156a-8c33-5c78-9b66-0c8418e7e426', '2026-07-01', 22, 17, 5, 5, 1, 3, 3, 3, 'Sinyal lemah saat input ASIK', '2026-08-10 15:48:10.621'),
+('66b37617-6bff-5cde-b610-e75f55fcb2b4', '8d7ecd19-be4d-5e1e-933f-8f333afc7236', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-08-01', 24, 18, 6, 3, 0, 2, 2, 4, 'Sinyal lemah saat input ASIK', '2026-09-17 09:06:14.851'),
+('7c1a9781-e061-5f78-aa17-74ae43917dfc', '8d7ecd19-be4d-5e1e-933f-8f333afc7236', 'f646dc12-bc06-515b-9bbf-b84ab5a959dd', '2026-09-01', 29, 26, 3, 4, 0, 2, 3, 2, 'Beberapa balita pindah domisili', '2026-10-09 11:44:18.729'),
+('13d45c34-e3f3-51b9-b861-24e14efa3d1a', '8d7ecd19-be4d-5e1e-933f-8f333afc7236', '06be2dcf-5615-53c4-a30a-a7bca59b2a46', '2026-10-01', 18, 15, 3, 2, 0, 1, 1, 2, 'Data bulan lalu disusulkan', '2026-11-01 11:15:00.000'),
+('403edf29-b600-5586-bb9e-aebe8a95ecf2', 'c31cbef8-13e8-51e6-afcd-6b3f85e7d805', '43dffafa-3cbc-59bc-bfd8-efc32d3ffd7e', '2026-01-01', 42, 32, 10, 8, 2, 3, 4, 9, 'Timbangan dikalibrasi ulang', '2026-02-19 12:51:42.851'),
+('bb2c098b-217e-5963-939c-5b3d1efbca44', 'c31cbef8-13e8-51e6-afcd-6b3f85e7d805', '43dffafa-3cbc-59bc-bfd8-efc32d3ffd7e', '2026-02-01', 31, 23, 8, 6, 1, 5, 2, 5, NULL, '2026-03-18 10:27:32.194'),
+('5459db4d-c1c4-5372-8e18-04d82cd993e3', 'c31cbef8-13e8-51e6-afcd-6b3f85e7d805', '43dffafa-3cbc-59bc-bfd8-efc32d3ffd7e', '2026-03-01', 27, 21, 6, 3, 1, 0, 2, 3, NULL, '2026-04-03 09:56:04.780'),
+('fe8f76ca-6c34-544c-a0f3-23138f780cac', 'c31cbef8-13e8-51e6-afcd-6b3f85e7d805', '43dffafa-3cbc-59bc-bfd8-efc32d3ffd7e', '2026-04-01', 41, 33, 8, 8, 2, 5, 3, 3, 'Sinyal lemah saat input ASIK', '2026-05-03 15:27:56.064'),
+('326f9aed-bc97-5697-9caa-c8454b5c7312', 'c31cbef8-13e8-51e6-afcd-6b3f85e7d805', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-05-01', 16, 13, 3, 2, 0, 1, 1, 2, 'Verifikasi silang dengan buku KIA', '2026-06-16 09:22:10.011'),
+('9ed999cb-fcaa-59d8-95e4-f3fa2103ede5', 'c31cbef8-13e8-51e6-afcd-6b3f85e7d805', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-06-01', 28, 24, 4, 4, 2, 1, 1, 2, 'Data bulan lalu disusulkan', '2026-07-22 12:14:47.844'),
+('f1b9d659-2816-5d29-b086-021901581947', 'c31cbef8-13e8-51e6-afcd-6b3f85e7d805', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-07-01', 31, 26, 5, 4, 0, 1, 3, 2, NULL, '2026-08-11 12:07:55.620'),
+('20f1d612-771b-52bb-bee0-2fe7507aee8e', 'c31cbef8-13e8-51e6-afcd-6b3f85e7d805', '43dffafa-3cbc-59bc-bfd8-efc32d3ffd7e', '2026-07-01', 34, 31, 3, 3, 1, 1, 1, 3, 'Audit ulang setelah perbaikan data', '2026-08-24 14:43:06.999'),
+('e0fde25f-51d2-584c-a407-1d1500c3dd93', 'c31cbef8-13e8-51e6-afcd-6b3f85e7d805', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-08-01', 27, 23, 4, 3, 0, 2, 2, 2, NULL, '2026-09-04 08:55:45.301'),
+('31fe8ec7-d0de-5d91-befa-2c10a218a0da', 'c31cbef8-13e8-51e6-afcd-6b3f85e7d805', '43dffafa-3cbc-59bc-bfd8-efc32d3ffd7e', '2026-09-01', 44, 39, 5, 6, 1, 5, 3, 3, 'Beberapa balita pindah domisili', '2026-10-23 08:18:08.110'),
+('9302e453-e1d8-5f23-982b-90493578c913', 'c31cbef8-13e8-51e6-afcd-6b3f85e7d805', '43dffafa-3cbc-59bc-bfd8-efc32d3ffd7e', '2026-10-01', 40, 34, 6, 6, 0, 3, 4, 5, 'Data bulan lalu disusulkan', '2026-11-01 10:09:00.000'),
+('2cc7b0f2-de53-5b86-b41a-8655dbf7000f', 'a2cf43be-4a64-5778-9a2e-525b84d55f11', '43dffafa-3cbc-59bc-bfd8-efc32d3ffd7e', '2026-01-01', 33, 24, 9, 6, 1, 5, 1, 3, NULL, '2026-02-13 10:48:51.706'),
+('6d991d2d-3b91-515d-a99d-7bfff47f586e', 'a2cf43be-4a64-5778-9a2e-525b84d55f11', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-01-01', 21, 17, 4, 3, 3, 0, 0, 3, 'Audit ulang setelah perbaikan data', '2026-02-13 11:12:21.262'),
+('dcc0412a-19ff-5168-bc93-468b5fa3dad4', 'a2cf43be-4a64-5778-9a2e-525b84d55f11', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-02-01', 37, 28, 9, 5, 1, 3, 2, 4, 'Verifikasi silang dengan buku KIA', '2026-03-09 10:23:30.066'),
+('17b81938-40a4-59b0-b4b3-4c55a2480a7c', 'a2cf43be-4a64-5778-9a2e-525b84d55f11', '43dffafa-3cbc-59bc-bfd8-efc32d3ffd7e', '2026-02-01', 40, 33, 7, 8, 2, 5, 2, 2, 'Audit ulang setelah perbaikan data', '2026-03-26 14:04:30.323'),
+('b773eb8b-f0ea-53b6-a2aa-4a5eb04697e3', 'a2cf43be-4a64-5778-9a2e-525b84d55f11', '43dffafa-3cbc-59bc-bfd8-efc32d3ffd7e', '2026-03-01', 16, 13, 3, 4, 2, 2, 1, 2, 'Timbangan dikalibrasi ulang', '2026-04-03 13:06:16.510'),
+('1760236a-c991-595c-bdaa-c3bbe9689835', 'a2cf43be-4a64-5778-9a2e-525b84d55f11', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-04-01', 41, 30, 11, 9, 2, 4, 3, 9, 'Verifikasi silang dengan buku KIA', '2026-05-03 14:29:59.698'),
+('e484ff21-7846-55ca-b264-be738edad0c7', 'a2cf43be-4a64-5778-9a2e-525b84d55f11', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-05-01', 27, 21, 6, 3, 0, 2, 2, 2, 'Data bulan lalu disusulkan', '2026-06-09 15:43:00.124'),
+('bc06ce7e-64f4-5e29-bba3-b06cc2ca0516', 'a2cf43be-4a64-5778-9a2e-525b84d55f11', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-06-01', 45, 37, 8, 7, 0, 7, 1, 6, 'Timbangan dikalibrasi ulang', '2026-07-21 15:16:49.324'),
+('e650ea56-dabf-56f5-8021-6c841e0eb80b', 'a2cf43be-4a64-5778-9a2e-525b84d55f11', '43dffafa-3cbc-59bc-bfd8-efc32d3ffd7e', '2026-07-01', 20, 17, 3, 2, 0, 2, 0, 2, NULL, '2026-08-17 15:02:17.874'),
+('3d992836-ff83-5a8f-9b09-e03141027278', 'a2cf43be-4a64-5778-9a2e-525b84d55f11', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-08-01', 29, 25, 4, 3, 1, 0, 2, 1, 'Beberapa balita pindah domisili', '2026-09-24 12:07:45.056'),
+('f8c1dce4-b5af-5984-b8c8-4b6a7aab4998', 'a2cf43be-4a64-5778-9a2e-525b84d55f11', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-09-01', 45, 42, 3, 3, 1, 1, 1, 2, 'Data bulan lalu disusulkan', '2026-10-18 12:29:33.768'),
+('12cca341-13a1-5860-bb4e-69d94ba9c626', 'a2cf43be-4a64-5778-9a2e-525b84d55f11', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-10-01', 20, 16, 4, 3, 2, 1, 0, 1, NULL, '2026-11-01 10:40:00.000'),
+('049292f8-04df-5fda-b1de-e98e188d7a27', '41f483ad-86d3-574f-bb9e-78ef62eaddc0', '43dffafa-3cbc-59bc-bfd8-efc32d3ffd7e', '2026-01-01', 29, 21, 8, 7, 2, 4, 3, 5, NULL, '2026-02-25 09:57:26.989'),
+('b71cdd37-ea78-52b7-b6eb-e2b91e371094', '41f483ad-86d3-574f-bb9e-78ef62eaddc0', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-01-01', 24, 18, 6, 4, 2, 4, 1, 2, 'Audit ulang setelah perbaikan data', '2026-02-25 11:00:00.316'),
+('526fac77-9d10-5c41-821d-aba78c7a4632', '41f483ad-86d3-574f-bb9e-78ef62eaddc0', '43dffafa-3cbc-59bc-bfd8-efc32d3ffd7e', '2026-02-01', 28, 19, 9, 6, 2, 3, 1, 2, 'Sinyal lemah saat input ASIK', '2026-03-07 15:30:01.886'),
+('e0a869db-47f6-5aed-99a0-94d78ab16988', '41f483ad-86d3-574f-bb9e-78ef62eaddc0', '43dffafa-3cbc-59bc-bfd8-efc32d3ffd7e', '2026-03-01', 20, 15, 5, 3, 1, 3, 1, 4, 'Data bulan lalu disusulkan', '2026-04-24 09:32:26.125'),
+('1cf2cd84-640a-5b9e-8822-4e551dc454a8', '41f483ad-86d3-574f-bb9e-78ef62eaddc0', '43dffafa-3cbc-59bc-bfd8-efc32d3ffd7e', '2026-04-01', 43, 33, 10, 8, 3, 3, 2, 5, 'Beberapa balita pindah domisili', '2026-05-19 10:57:52.324'),
+('d7e1cf9b-dfeb-5875-9269-81fa1d8b83f5', '41f483ad-86d3-574f-bb9e-78ef62eaddc0', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-05-01', 18, 13, 5, 4, 0, 4, 0, 2, 'Kader baru, input ASIK masih tertunda', '2026-06-03 10:00:33.748'),
+('c9c880f3-f100-5fe5-8eee-eae6beb6c1cf', '41f483ad-86d3-574f-bb9e-78ef62eaddc0', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-06-01', 19, 14, 5, 3, 1, 1, 1, 3, 'Data bulan lalu disusulkan', '2026-07-22 13:02:24.061'),
+('17f34955-5c55-57de-b84a-d57aa4d67116', '41f483ad-86d3-574f-bb9e-78ef62eaddc0', '43dffafa-3cbc-59bc-bfd8-efc32d3ffd7e', '2026-07-01', 15, 12, 3, 2, 0, 2, 2, 1, 'Verifikasi silang dengan buku KIA', '2026-08-10 10:21:55.182'),
+('30f2d22b-718d-5f57-9533-18f86effb766', '41f483ad-86d3-574f-bb9e-78ef62eaddc0', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-08-01', 21, 17, 4, 5, 0, 4, 2, 1, 'Sinyal lemah saat input ASIK', '2026-09-06 11:33:22.411'),
+('974cac02-63f3-5eac-9f78-aa1c760bd3dc', '41f483ad-86d3-574f-bb9e-78ef62eaddc0', '43dffafa-3cbc-59bc-bfd8-efc32d3ffd7e', '2026-09-01', 27, 20, 7, 8, 2, 4, 5, 6, NULL, '2026-10-18 09:46:45.940'),
+('5ea3c9c6-ff90-5604-9c21-22634b1cac0c', '41f483ad-86d3-574f-bb9e-78ef62eaddc0', '43dffafa-3cbc-59bc-bfd8-efc32d3ffd7e', '2026-10-01', 42, 38, 4, 3, 1, 1, 1, 3, 'Beberapa balita pindah domisili', '2026-11-01 08:20:00.000'),
+('a1f034e7-e8ab-5cec-9196-0202f95c54bb', '3e94f159-07f6-5403-a415-05013fa3c663', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-01-01', 15, 11, 4, 2, 1, 1, 1, 1, 'Verifikasi silang dengan buku KIA', '2026-02-14 09:05:17.544'),
+('6bbae185-6da3-5220-8c66-25272880a905', '3e94f159-07f6-5403-a415-05013fa3c663', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-02-01', 21, 16, 5, 3, 0, 3, 2, 3, NULL, '2026-03-23 09:52:14.383'),
+('5d0fe97f-d303-55cb-a6ca-f199687ed809', '3e94f159-07f6-5403-a415-05013fa3c663', '43dffafa-3cbc-59bc-bfd8-efc32d3ffd7e', '2026-03-01', 21, 15, 6, 5, 1, 3, 2, 4, NULL, '2026-04-12 14:33:44.332'),
+('0381fec0-77aa-52bd-aadc-b8973d13cf3e', '3e94f159-07f6-5403-a415-05013fa3c663', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-04-01', 41, 31, 10, 10, 2, 8, 3, 5, 'Beberapa balita pindah domisili', '2026-05-13 14:16:44.225'),
+('293fd5a5-d157-5a8a-8e2a-2061063b1fd0', '3e94f159-07f6-5403-a415-05013fa3c663', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-05-01', 34, 27, 7, 4, 0, 2, 3, 3, 'Sinyal lemah saat input ASIK', '2026-06-15 12:51:52.045'),
+('5a5088e5-0931-5b4f-a92f-1d166dd626d9', '3e94f159-07f6-5403-a415-05013fa3c663', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-06-01', 41, 31, 10, 9, 2, 6, 2, 8, 'Verifikasi silang dengan buku KIA', '2026-07-21 14:10:51.185'),
+('ae0077b0-fa4b-58f4-a7c8-512ee426b6db', '3e94f159-07f6-5403-a415-05013fa3c663', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-07-01', 25, 20, 5, 3, 1, 1, 2, 4, NULL, '2026-08-16 08:01:11.775'),
+('4e4438a9-e19e-54b1-93e1-db908dbd3885', '3e94f159-07f6-5403-a415-05013fa3c663', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-08-01', 17, 14, 3, 3, 0, 2, 1, 1, 'Kader baru, input ASIK masih tertunda', '2026-09-18 10:03:44.388'),
+('d305c67a-cf17-592f-9794-93dffd759334', '3e94f159-07f6-5403-a415-05013fa3c663', '43dffafa-3cbc-59bc-bfd8-efc32d3ffd7e', '2026-09-01', 39, 35, 4, 4, 1, 3, 0, 3, NULL, '2026-10-17 15:38:10.086'),
+('0a5451d3-1413-5b29-a2bf-0b8e0104c201', '3e94f159-07f6-5403-a415-05013fa3c663', '983a913d-c92d-58b6-9b0c-92d71c8ea85f', '2026-10-01', 39, 33, 6, 7, 1, 2, 4, 2, 'Sinyal lemah saat input ASIK', '2026-11-01 09:56:00.000'),
+('a7c5d087-017a-5c18-a0f2-4d19ac318d74', '1546d67f-05bb-50b2-b456-5aed38f16b42', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-01-01', 20, 18, 2, 2, 0, 2, 1, 2, NULL, '2026-02-24 10:40:47.785'),
+('3d5c5ce1-94f9-55c7-a80a-53af60b5b572', '1546d67f-05bb-50b2-b456-5aed38f16b42', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-02-01', 25, 22, 3, 2, 0, 1, 2, 1, 'Selisih TB karena alat ukur berbeda', '2026-03-25 14:13:18.334'),
+('dd9caf54-3861-5520-837e-0ff389609f1c', '1546d67f-05bb-50b2-b456-5aed38f16b42', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-02-01', 16, 15, 1, 1, 0, 0, 1, 1, 'Audit ulang setelah perbaikan data', '2026-03-07 09:18:23.626'),
+('3590f5f2-de9c-5d75-a0e3-c7da36ca96bf', '1546d67f-05bb-50b2-b456-5aed38f16b42', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-03-01', 26, 23, 3, 3, 1, 1, 2, 2, NULL, '2026-04-12 09:00:07.212'),
+('ea28f018-2a2c-54f7-83fa-47d351e7d50c', '1546d67f-05bb-50b2-b456-5aed38f16b42', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-04-01', 39, 35, 4, 4, 1, 1, 2, 4, NULL, '2026-05-25 14:04:58.015'),
+('e123d225-0d9e-5737-b202-675e83a3f775', '1546d67f-05bb-50b2-b456-5aed38f16b42', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-05-01', 25, 24, 1, 2, 0, 0, 2, 1, 'Verifikasi silang dengan buku KIA', '2026-06-14 15:22:47.685'),
+('67aa8d3a-44aa-56e6-a2df-e508b48d79b2', '1546d67f-05bb-50b2-b456-5aed38f16b42', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-06-01', 36, 33, 3, 2, 1, 0, 1, 2, 'Kader baru, input ASIK masih tertunda', '2026-07-08 09:35:41.516'),
+('d10aed7c-0977-5c8f-8ef7-d3210118695f', '1546d67f-05bb-50b2-b456-5aed38f16b42', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-07-01', 40, 40, 0, 0, 0, 0, 0, 0, 'Verifikasi silang dengan buku KIA', '2026-08-23 11:13:41.391'),
+('7fb41ed6-879e-59f4-943a-4df32de6eff9', '1546d67f-05bb-50b2-b456-5aed38f16b42', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-08-01', 25, 24, 1, 2, 0, 2, 1, 1, 'Selisih TB karena alat ukur berbeda', '2026-09-19 08:21:37.273'),
+('65a0b957-e4a4-5a9c-8904-f1993d04e38d', '1546d67f-05bb-50b2-b456-5aed38f16b42', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-09-01', 28, 27, 1, 1, 0, 1, 0, 1, 'Beberapa balita pindah domisili', '2026-10-11 13:49:27.077'),
+('23fb8db5-901a-55a3-9af8-b76745e9c0e4', '1546d67f-05bb-50b2-b456-5aed38f16b42', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-10-01', 21, 20, 1, 1, 0, 1, 1, 1, 'Beberapa balita pindah domisili', '2026-11-01 08:41:00.000'),
+('d914a0d5-a524-5f7a-ad37-b900e53b6c74', '6e8c8a0e-8245-5e88-bdfd-5fa0e2773c60', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-01-01', 23, 17, 6, 4, 1, 3, 1, 3, NULL, '2026-02-21 09:34:00.315'),
+('a24bf664-6c0f-52d5-bf3b-89a9898b4c74', '6e8c8a0e-8245-5e88-bdfd-5fa0e2773c60', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-02-01', 22, 18, 4, 4, 0, 4, 2, 2, 'Data bulan lalu disusulkan', '2026-03-21 13:17:46.412'),
+('41bc8060-82c2-588b-8ca1-c5bc0ce49e09', '6e8c8a0e-8245-5e88-bdfd-5fa0e2773c60', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-03-01', 27, 21, 6, 4, 1, 2, 1, 2, 'Data bulan lalu disusulkan', '2026-04-07 08:11:32.855'),
+('f73fd342-20d2-5829-9bd3-bb224ebff9a0', '6e8c8a0e-8245-5e88-bdfd-5fa0e2773c60', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-04-01', 32, 25, 7, 4, 0, 4, 0, 4, NULL, '2026-05-19 12:36:36.601'),
+('28cffcb9-2964-5e55-a71e-85d629782fbf', '6e8c8a0e-8245-5e88-bdfd-5fa0e2773c60', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-05-01', 35, 29, 6, 4, 0, 3, 2, 2, 'Data bulan lalu disusulkan', '2026-06-24 14:31:03.553'),
+('3e682085-4127-5b29-8fec-000610880525', '6e8c8a0e-8245-5e88-bdfd-5fa0e2773c60', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-06-01', 23, 19, 4, 4, 0, 2, 2, 2, 'Sinyal lemah saat input ASIK', '2026-07-09 10:00:04.580'),
+('8a476f6a-47b8-5bea-964c-5b36df4c1f7a', '6e8c8a0e-8245-5e88-bdfd-5fa0e2773c60', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-06-01', 19, 15, 4, 3, 0, 2, 1, 2, 'Audit ulang setelah perbaikan data', '2026-07-20 15:32:51.345'),
+('7f3fd48c-1d32-52cd-87d3-efa91d8935f9', '6e8c8a0e-8245-5e88-bdfd-5fa0e2773c60', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-07-01', 45, 36, 9, 9, 1, 6, 4, 8, 'Beberapa balita pindah domisili', '2026-08-06 13:36:13.510'),
+('784661b6-3ba6-53fd-a164-095ed042d9f8', '6e8c8a0e-8245-5e88-bdfd-5fa0e2773c60', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-07-01', 30, 25, 5, 5, 1, 3, 3, 4, 'Audit ulang setelah perbaikan data', '2026-08-22 15:30:07.231'),
+('46644049-b683-5f38-bb48-6718d67ab2e8', '6e8c8a0e-8245-5e88-bdfd-5fa0e2773c60', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-08-01', 24, 20, 4, 2, 1, 1, 0, 2, 'Beberapa balita pindah domisili', '2026-09-12 11:53:07.979'),
+('47f34e4e-f5a7-5038-b29c-b01534e02e1c', '6e8c8a0e-8245-5e88-bdfd-5fa0e2773c60', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-09-01', 31, 26, 5, 5, 1, 3, 2, 4, NULL, '2026-10-20 14:25:10.870'),
+('78020d55-1630-531b-b860-f50df1f05bd6', '6e8c8a0e-8245-5e88-bdfd-5fa0e2773c60', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-10-01', 15, 15, 0, 1, 0, 0, 1, 0, 'Verifikasi silang dengan buku KIA', '2026-11-01 11:11:00.000'),
+('5a292b2e-968a-5da0-8b57-1a5905e40d0b', '62ed2e08-49a5-5c0a-8cb4-235c5938544d', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-01-01', 38, 36, 2, 2, 2, 2, 0, 2, 'Selisih TB karena alat ukur berbeda', '2026-02-07 14:22:47.594'),
+('717fac5e-5e7e-56b5-8ab8-84d4f3f704e6', '62ed2e08-49a5-5c0a-8cb4-235c5938544d', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-02-01', 35, 34, 1, 1, 1, 1, 0, 1, 'Timbangan dikalibrasi ulang', '2026-03-04 15:04:19.843'),
+('d89bea91-1ccf-5d66-b6da-cd6cc8321a78', '62ed2e08-49a5-5c0a-8cb4-235c5938544d', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-03-01', 20, 19, 1, 1, 0, 1, 0, 1, NULL, '2026-04-19 11:03:59.773'),
+('19bd7ff6-6fa5-5955-9885-7bea65ee8ca6', '62ed2e08-49a5-5c0a-8cb4-235c5938544d', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-04-01', 16, 15, 1, 1, 0, 1, 1, 0, 'Selisih TB karena alat ukur berbeda', '2026-05-11 11:00:50.348'),
+('c4c95bec-5425-51a8-b667-b591910f9c7b', '62ed2e08-49a5-5c0a-8cb4-235c5938544d', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-05-01', 29, 27, 2, 2, 0, 1, 1, 1, NULL, '2026-06-11 12:31:17.315'),
+('8e4bb5bf-6724-5407-80c3-fd32fdfe9baf', '62ed2e08-49a5-5c0a-8cb4-235c5938544d', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-06-01', 44, 43, 1, 2, 0, 1, 1, 1, 'Selisih TB karena alat ukur berbeda', '2026-07-22 09:29:02.776'),
+('15fb045a-5252-5980-90b3-4505a8309500', '62ed2e08-49a5-5c0a-8cb4-235c5938544d', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-07-01', 21, 20, 1, 0, 0, 0, 0, 0, 'Timbangan dikalibrasi ulang', '2026-08-14 10:55:58.423'),
+('28879964-385e-53c2-9084-5e3fb6acd6c7', '62ed2e08-49a5-5c0a-8cb4-235c5938544d', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-08-01', 38, 37, 1, 1, 0, 0, 1, 1, 'Beberapa balita pindah domisili', '2026-09-24 15:25:07.148'),
+('6069b3c4-b883-5f2f-b509-25bfc6b6f8bc', '62ed2e08-49a5-5c0a-8cb4-235c5938544d', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-09-01', 20, 20, 0, 0, 0, 0, 0, 0, 'Beberapa balita pindah domisili', '2026-10-25 11:29:02.744'),
+('b8bbefc1-1d5b-53a4-badd-7b3df6c43b04', '62ed2e08-49a5-5c0a-8cb4-235c5938544d', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-10-01', 27, 25, 2, 2, 0, 2, 0, 2, 'Kader baru, input ASIK masih tertunda', '2026-11-01 09:26:00.000'),
+('14df66dd-dfd4-5ac1-96f9-14ed4f54f25b', '62ed2e08-49a5-5c0a-8cb4-235c5938544d', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-10-01', 16, 16, 0, 0, 0, 0, 0, 0, 'Audit ulang setelah perbaikan data', '2026-11-01 09:10:00.000'),
+('0756d28d-b200-5f0b-a1ea-896e2f49a4a8', '5661571d-83ce-56a5-bc6c-af77d7a784e4', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-01-01', 25, 24, 1, 1, 0, 1, 0, 1, 'Data bulan lalu disusulkan', '2026-02-07 14:01:23.575'),
+('1fa4dd43-5122-5add-a974-0e81f897bbd0', '5661571d-83ce-56a5-bc6c-af77d7a784e4', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-01-01', 38, 37, 1, 1, 0, 0, 1, 1, 'Audit ulang setelah perbaikan data', '2026-02-10 08:28:30.038'),
+('3b408ca6-feee-5f0a-8b4d-a764ab86e26f', '5661571d-83ce-56a5-bc6c-af77d7a784e4', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-02-01', 45, 42, 3, 4, 0, 4, 1, 3, 'Data bulan lalu disusulkan', '2026-03-22 15:32:15.511'),
+('5cdffb2f-7d93-573a-a971-36b86529252b', '5661571d-83ce-56a5-bc6c-af77d7a784e4', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-03-01', 38, 35, 3, 3, 0, 3, 0, 2, 'Selisih TB karena alat ukur berbeda', '2026-04-25 14:44:24.044'),
+('4a8a42ed-fb0a-54d1-afb8-0687f4c6490d', '5661571d-83ce-56a5-bc6c-af77d7a784e4', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-04-01', 23, 22, 1, 1, 0, 1, 1, 1, 'Sinyal lemah saat input ASIK', '2026-05-18 15:42:12.223'),
+('7ba91570-1095-567a-8b8a-e54656033915', '5661571d-83ce-56a5-bc6c-af77d7a784e4', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-05-01', 45, 42, 3, 3, 1, 2, 1, 1, NULL, '2026-06-19 11:13:06.487'),
+('ef934e36-dbbb-533b-80a4-745df3fe5f95', '5661571d-83ce-56a5-bc6c-af77d7a784e4', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-06-01', 35, 34, 1, 1, 1, 0, 0, 0, 'Kader baru, input ASIK masih tertunda', '2026-07-16 15:01:29.514'),
+('494c1346-bc82-55c7-9e19-55fa858cd55c', '5661571d-83ce-56a5-bc6c-af77d7a784e4', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-06-01', 36, 36, 0, 0, 0, 0, 0, 0, 'Audit ulang setelah perbaikan data', '2026-07-07 15:14:26.774'),
+('74e8c6da-a4fc-557f-b4b5-3146a2bd6592', '5661571d-83ce-56a5-bc6c-af77d7a784e4', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-07-01', 30, 29, 1, 1, 0, 0, 1, 0, 'Sinyal lemah saat input ASIK', '2026-08-24 14:20:07.450'),
+('05a5acc6-5879-5564-80e8-2efb7340a72c', '5661571d-83ce-56a5-bc6c-af77d7a784e4', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-08-01', 45, 42, 3, 2, 1, 1, 0, 4, 'Selisih TB karena alat ukur berbeda', '2026-09-17 15:13:26.457'),
+('29ae9179-a847-5801-b952-aad4d9691f0b', '5661571d-83ce-56a5-bc6c-af77d7a784e4', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-09-01', 27, 27, 0, 0, 0, 0, 0, 0, 'Verifikasi silang dengan buku KIA', '2026-10-09 09:27:17.559'),
+('cba8e10f-e3d2-5e58-8d4a-1a7fdda6b84d', '5661571d-83ce-56a5-bc6c-af77d7a784e4', 'de5fffde-ba46-5ccb-8313-5eada83f2be0', '2026-10-01', 34, 34, 0, 0, 0, 0, 0, 0, 'Timbangan dikalibrasi ulang', '2026-11-01 09:08:00.000');
 
 COMMIT;
-
--- Cek cepat:
---   SELECT posyandu_nama, periode, persen_kelengkapan, persen_kesesuaian, persen_ketepatan
---   FROM v_tren_kualitas ORDER BY posyandu_nama, periode;
+SET FOREIGN_KEY_CHECKS = 1;

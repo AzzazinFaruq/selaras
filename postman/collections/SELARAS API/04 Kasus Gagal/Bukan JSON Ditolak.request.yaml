@@ -1,0 +1,23 @@
+$kind: http-request
+name: "Bukan JSON Ditolak"
+description: |-
+  POST/PUT wajib `Content-Type: application/json`. Ini lapisan perlindungan CSRF kedua setelah cookie SameSite=Strict.
+method: POST
+url: "{{baseUrl}}/api/posyandu"
+order: 9000
+headers:
+  Content-Type: text/plain
+body:
+  type: text
+  content: "nama=Liar"
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status 415', function () {
+          pm.response.to.have.status(415);
+      });
+
+      pm.test('Ada pesan error', function () {
+          pm.expect(pm.response.json().error).to.be.a('string').and.not.empty;
+      });

@@ -1,0 +1,29 @@
+$kind: http-request
+name: "Cek Server"
+description: |-
+  Tanpa login. Memastikan server hidup.
+
+  **Respons 200**
+  ```json
+  { "status": "ok" }
+  ```
+method: GET
+url: "{{baseUrl}}/api/sehat"
+order: 1000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status 200', function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test('Status server ok', function () {
+          pm.expect(pm.response.json().status).to.eql('ok');
+      });
+
+      pm.test('Header keamanan terpasang', function () {
+          pm.expect(pm.response.headers.get('Content-Security-Policy')).to.be.a('string');
+          pm.expect(pm.response.headers.get('X-Frame-Options')).to.eql('DENY');
+          pm.expect(pm.response.headers.get('Cache-Control')).to.eql('no-store');
+      });

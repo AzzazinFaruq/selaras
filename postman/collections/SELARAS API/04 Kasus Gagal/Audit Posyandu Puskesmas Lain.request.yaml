@@ -1,0 +1,35 @@
+$kind: http-request
+name: "Audit Posyandu Puskesmas Lain"
+description: |-
+  Isolasi antar puskesmas: Posyandu Cempaka milik Puskesmas Kendalkerep. Dibalas 404, bukan 403, supaya keberadaan datanya tidak terungkap.
+method: POST
+url: "{{baseUrl}}/api/audit"
+order: 5000
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "posyandu_id": "{{posyanduLainId}}",
+      "periode": "{{periode}}",
+      "jumlah_sampel": 20,
+      "jumlah_tercatat_asik": 17,
+      "jml_tidak_ada_di_asik": 3,
+      "jml_tidak_sesuai": 3,
+      "jml_selisih_tanggal": 0,
+      "jml_selisih_bb": 2,
+      "jml_selisih_tb": 1,
+      "jml_terlambat": 4
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status 404', function () {
+          pm.response.to.have.status(404);
+      });
+
+      pm.test('Ada pesan error', function () {
+          pm.expect(pm.response.json().error).to.be.a('string').and.not.empty;
+      });

@@ -1,0 +1,18 @@
+$kind: http-request
+name: "Hapus Audit Petugas Lain"
+description: |-
+  Audit Posyandu Cempaka milik Agus (puskesmas lain) tidak bisa dihapus admin.
+method: DELETE
+url: "{{baseUrl}}/api/audit/{{auditPetugasLainId}}"
+order: 8000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status 404', function () {
+          pm.response.to.have.status(404);
+      });
+
+      pm.test('Ada pesan error', function () {
+          pm.expect(pm.response.json().error).to.be.a('string').and.not.empty;
+      });

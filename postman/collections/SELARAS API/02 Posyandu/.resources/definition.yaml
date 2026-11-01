@@ -1,0 +1,5 @@
+$kind: collection
+name: "02 Posyandu"
+description: |-
+  Data master posyandu. Selalu dibatasi ke puskesmas petugas yang login; `puskesmas_id` diambil dari sesi, tidak pernah dari input klien. Tidak ada endpoint hapus.
+order: 2000

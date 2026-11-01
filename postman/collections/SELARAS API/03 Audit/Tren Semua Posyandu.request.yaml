@@ -1,0 +1,43 @@
+$kind: http-request
+name: "Tren Semua Posyandu"
+description: |-
+  Data dashboard: satu baris per posyandu per periode (audit terbaru), urut periode. Persen bernilai `null` bila pembaginya nol.
+
+  **Respons 200**
+  ```json
+  {
+    "data": [
+      {
+        "posyandu_id": "<uuid>",
+        "posyandu_nama": "Posyandu Melati 1",
+        "periode": "2026-10",
+        "jumlah_sampel": 20,
+        "jumlah_tercatat_asik": 17,
+        "jml_tidak_ada_di_asik": 3,
+        "jml_tidak_sesuai": 3,
+        "jml_selisih_tanggal": 0,
+        "jml_selisih_bb": 2,
+        "jml_selisih_tb": 1,
+        "jml_terlambat": 4,
+        "persen_kelengkapan": 85,
+        "persen_kesesuaian": 82.35,
+        "persen_ketepatan": 76.47
+      }
+    ]
+  }
+  ```
+method: GET
+url: "{{baseUrl}}/api/tren"
+order: 2000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status 200', function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test('Tidak memuat posyandu puskesmas lain', function () {
+          const ids = pm.response.json().data.map((r) => r.posyandu_id);
+          pm.expect(ids).to.not.include(pm.environment.get('posyanduLainId'));
+      });
