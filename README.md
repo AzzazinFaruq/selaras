@@ -125,7 +125,36 @@ Dijalankan di server, dari folder yang berisi `.env`:
 ./selaras daftar
 ```
 
-## Deploy ke homeserver (Linux)
+## Deploy dengan Docker
+
+Butuh Docker Engine dan plugin Compose di homeserver. Satu perintah membangun image aplikasi (binary Go + frontend) dan menjalankannya bersama MySQL.
+
+```bash
+git clone https://github.com/AzzazinFaruq/selaras.git && cd selaras
+cp .env.example .env && chmod 600 .env   # isi DB_PASSWORD, DB_ROOT_PASSWORD, JWT_SECRET
+docker compose up -d --build
+docker compose ps                        # tunggu sampai app berstatus "healthy"
+
+# Akun pertama (perintah admin dijalankan di dalam container app)
+docker compose exec app /app/selaras puskesmas-baru "Puskesmas Contoh" "Surabaya"       # catat id-nya
+docker compose exec app /app/selaras petugas-baru saya@contoh.id "Nama Saya" <id-puskesmas>   # catat password
+```
+
+Perintah admin lain (`reset-password`, `nonaktifkan`, `daftar`) dipanggil dengan cara yang sama.
+
+**Akses dan HTTPS:** secara bawaan aplikasi hanya bisa dijangkau di `http://127.0.0.1:8080` dari homeserver itu sendiri, dan cookie login bertanda `Secure`, jadi dari luar harus lewat HTTPS. Arahkan Cloudflare Tunnel (`cloudflared`) ke `http://127.0.0.1:8080` dan isi `PROXY_HEADER=CF-Connecting-IP` di `.env`. Bila `cloudflared` sendiri berjalan sebagai container, gabungkan ia ke jaringan compose ini dan arahkan ke `http://app:8080`. Untuk sekadar mencoba lewat `http://` di jaringan lokal, isi `APP_ENV=development` dan `APP_BIND=0.0.0.0:8080`; jangan dipakai untuk data sungguhan.
+
+**Perawatan:**
+
+```bash
+git pull && docker compose up -d --build     # memperbarui ke versi terbaru
+docker compose logs -f app                   # melihat log
+docker compose exec -T db sh -c 'mysqldump --single-transaction -uroot -p"$MYSQL_ROOT_PASSWORD" selaras' > selaras-$(date +%F).sql   # backup
+```
+
+Data MySQL tersimpan di volume `selaras_db-data`. `docker compose down` aman; `docker compose down -v` **menghapus seluruh data**. Password di `.env` hanya dipakai saat database pertama kali dibuat, jadi mengubahnya belakangan tidak mengubah password di MySQL.
+
+## Deploy ke homeserver (Linux, tanpa Docker)
 
 ```bash
 # Di laptop: build

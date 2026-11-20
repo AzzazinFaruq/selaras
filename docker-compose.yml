@@ -1,0 +1,63 @@
+# Deploy SELARAS di homeserver: aplikasi (Go + frontend) dan MySQL.
+#
+#   cp .env.example .env     # isi DB_PASSWORD, DB_ROOT_PASSWORD, JWT_SECRET
+#   docker compose up -d --build
+#
+# Lihat README bagian "Deploy dengan Docker".
+
+name: selaras
+
+services:
+  db:
+    # MariaDB tidak didukung (lihat README). Versi bisa diganti lewat MYSQL_VERSION.
+    image: mysql:${MYSQL_VERSION:-8.4}
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    environment:
+      MYSQL_DATABASE: selaras
+      # User khusus aplikasi; image memberinya hak hanya di database selaras.
+      MYSQL_USER: selaras
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD wajib diisi di .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD wajib diisi di .env}
+    volumes:
+      - db-data:/var/lib/mysql
+    # Port 3306 sengaja tidak dibuka ke host; hanya service app yang menjangkaunya.
+    healthcheck:
+      # Lewat TCP supaya baru dianggap sehat setelah inisialisasi pertama selesai
+      # (server sementara saat inisialisasi tidak mendengar di jaringan).
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u\"$$MYSQL_USER\" -p\"$$MYSQL_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  app:
+    build: .
+    image: selaras:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: selaras
+      DB_USER: selaras
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD wajib diisi di .env}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET wajib diisi di .env}
+      # Kosong = produksi: cookie Secure dan HSTS aktif, jadi wajib lewat HTTPS.
+      APP_ENV: ${APP_ENV:-}
+      PROXY_HEADER: ${PROXY_HEADER:-}
+    ports:
+      # Bawaan hanya bisa dijangkau dari homeserver itu sendiri (untuk
+      # cloudflared / reverse proxy). Ubah APP_BIND di .env bila perlu.
+      - "${APP_BIND:-127.0.0.1:8080}:8080"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+volumes:
+  db-data:

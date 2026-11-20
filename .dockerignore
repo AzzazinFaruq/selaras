@@ -1,0 +1,26 @@
+# Rahasia tidak boleh masuk ke build context maupun image.
+.env
+**/.env
+**/*.env.local
+
+# Tidak dibutuhkan untuk build
+.git
+.gitignore
+README.md
+*.pdf
+.postman
+postman
+arsip-supabase
+backend/data_dummy.sql
+backend/selaras
+backend/selaras.exe
+
+# Dibuat ulang di dalam image
+frontend/node_modules
+frontend/dist
+
+# Data tiruan / data balita
+frontend/data-tiruan
+**/*.xlsx
+**/*.xls
+**/*.csv
