@@ -6,6 +6,10 @@ import api, { pesanGalat } from "../api/axios";
 const useAuditStore = create((set) => ({
   tren: [],
   riwayat: [],
+  // true setelah percobaan muat pertama selesai, supaya halaman tidak sempat
+  // menampilkan "belum ada audit" sebelum datanya datang.
+  trenSiap: false,
+  riwayatSiap: false,
   loading: false,
   error: null,
 
@@ -13,9 +17,9 @@ const useAuditStore = create((set) => ({
     set({ loading: true, error: null });
     try {
       const res = await api.get("/tren");
-      set({ tren: res.data.data, loading: false });
+      set({ tren: res.data.data, loading: false, trenSiap: true });
     } catch (err) {
-      set({ loading: false, error: pesanGalat(err, "Gagal memuat tren") });
+      set({ loading: false, trenSiap: true, error: pesanGalat(err, "Gagal memuat tren") });
     }
   },
 
@@ -23,9 +27,9 @@ const useAuditStore = create((set) => ({
     set({ loading: true, error: null });
     try {
       const res = await api.get("/audit");
-      set({ riwayat: res.data.data, loading: false });
+      set({ riwayat: res.data.data, loading: false, riwayatSiap: true });
     } catch (err) {
-      set({ loading: false, error: pesanGalat(err, "Gagal memuat riwayat") });
+      set({ loading: false, riwayatSiap: true, error: pesanGalat(err, "Gagal memuat riwayat") });
     }
   },
 

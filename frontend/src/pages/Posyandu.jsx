@@ -14,21 +14,21 @@ function BarisPosyandu({ p }) {
   if (!edit) {
     return (
       <tr>
-        <td>{p.nama}</td>
-        <td>{p.kelurahan ?? "–"}</td>
+        <td className="font-medium">{p.nama}</td>
+        <td className={p.kelurahan ? "" : "text-navy/55"}>{p.kelurahan ?? "–"}</td>
         <td className="text-right">
-          <button className="text-sm text-teal-700 hover:underline" onClick={() => setEdit(true)}>Ubah</button>
+          <button className="tautan text-sm" aria-label={`Ubah ${p.nama}`} onClick={() => setEdit(true)}>Ubah</button>
         </td>
       </tr>
     );
   }
   return (
-    <tr>
-      <td><input className="input" maxLength={100} value={nama} onChange={(e) => setNama(e.target.value)} /></td>
-      <td><input className="input" maxLength={100} value={kelurahan} onChange={(e) => setKelurahan(e.target.value)} /></td>
+    <tr className="bg-latar">
+      <td><input className="input min-w-36" aria-label="Nama posyandu" maxLength={100} value={nama} onChange={(e) => setNama(e.target.value)} /></td>
+      <td><input className="input min-w-36" aria-label="Kelurahan" maxLength={100} value={kelurahan} onChange={(e) => setKelurahan(e.target.value)} /></td>
       <td className="space-x-2 text-right whitespace-nowrap">
-        <button className="tombol py-1.5" onClick={simpan}>Simpan</button>
-        <button className="tombol-garis py-1.5" onClick={() => setEdit(false)}>Batal</button>
+        <button className="tombol" onClick={simpan}>Simpan</button>
+        <button className="tombol-garis" onClick={() => setEdit(false)}>Batal</button>
       </td>
     </tr>
   );
@@ -54,10 +54,14 @@ export default function Posyandu() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Posyandu</h1>
+      <div>
+        <h1 className="judul">Posyandu</h1>
+        <p className="mt-1 text-sm text-navy/75">Daftar posyandu di wilayah puskesmas ini, dipakai saat membuat audit.</p>
+      </div>
       {error && <p className="galat">{error}</p>}
 
       <form onSubmit={tambah} className="kartu grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+        <h2 className="subjudul sm:col-span-3">Tambah posyandu</h2>
         <div>
           <label className="label" htmlFor="nama-posyandu">Nama posyandu</label>
           <input id="nama-posyandu" className="input" required maxLength={100} value={nama} onChange={(e) => setNama(e.target.value)} placeholder="Posyandu Melati" />
@@ -70,6 +74,9 @@ export default function Posyandu() {
       </form>
 
       <div className="kartu overflow-x-auto p-0">
+        <p className="px-4 py-3 text-sm text-navy/75 sm:px-5">
+          <b className="text-navy tabular-nums">{posyandu.length}</b> posyandu terdaftar
+        </p>
         <table className="tabel">
           <thead>
             <tr><th>Nama</th><th>Kelurahan</th><th></th></tr>
@@ -77,7 +84,7 @@ export default function Posyandu() {
           <tbody>
             {posyandu.map((p) => <BarisPosyandu key={p.id} p={p} />)}
             {posyandu.length === 0 && (
-              <tr><td colSpan={3} className="py-6 text-center text-slate-500">Belum ada posyandu.</td></tr>
+              <tr><td colSpan={3} className="py-6 text-center text-navy/75">Belum ada posyandu.</td></tr>
             )}
           </tbody>
         </table>

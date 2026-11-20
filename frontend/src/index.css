@@ -1,20 +1,160 @@
 @import "tailwindcss";
 
+/* Font di-host sendiri (CSP: default-src 'self'). Bebas Neue dan Inter berlisensi OFL. */
+@font-face {
+  font-family: "Bebas Neue";
+  src: url("./assets/fonts/bebas-neue-latin-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("./assets/fonts/inter-latin-wght.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+/* Token dari desain Figma: halaman login (gelap) dan draf dashboard (terang). */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-judul: "Bebas Neue", "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* Coolvetica berlisensi komersial dan belum ada di proyek; sampai file fontnya
+     ditambahkan (@font-face di atas), teks ini jatuh ke Inter. */
+  --font-label: "Coolvetica", "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* Login */
+  --color-dasar: #253b6b; /* latar halaman login */
+  --color-panel: #2f3d5c; /* kartu login; di desain dipakai dengan opasitas 77% */
+  --color-aksen: #6bd6c9; /* tombol utama, penanda aktif */
+  --color-tinta: #1f2e4a; /* teks di atas aksen dan di dalam isian */
+  --color-isian: #d9d9d9; /* latar input di login */
+
+  /* Dashboard */
+  --color-navy: #0d3065; /* teks utama, kepala tabel, sidebar */
+  --color-latar: #d6f4d8; /* latar isi halaman, baris tersorot */
+  --color-muda: #abdee0; /* teks sekunder di atas navy */
+  --color-naik: #07e93c; /* latar lencana naik/baik (dipakai transparan) */
+  --color-turun: #e90707; /* latar lencana turun/buruk (dipakai transparan) */
+
+  /* Teks status. Hijau dan merah di desain (#27f602, #f60206) terlalu terang
+     untuk dibaca di atas putih, jadi digelapkan sampai kontras ≥ 4,5:1. */
+  --color-hijau: #0b6b24;
+  --color-biru: #1757b8;
+  --color-merah: #b10306;
+}
+
 @layer base {
+  html {
+    color-scheme: light;
+  }
   body {
-    @apply bg-slate-50 text-slate-800 antialiased;
+    @apply bg-latar text-navy antialiased;
   }
 }
 
 @layer components {
-  .kartu { @apply rounded-xl border border-slate-200 bg-white p-5; }
-  .input { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20 disabled:bg-slate-100; }
-  .label { @apply mb-1 block text-sm font-medium text-slate-700; }
-  .tombol { @apply inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50; }
-  .tombol-garis { @apply inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50; }
+  .judul { @apply font-judul text-4xl leading-none tracking-wide text-navy; }
+  .subjudul { @apply font-label text-lg leading-tight font-semibold text-navy; }
+  .kartu { @apply rounded border border-navy/20 bg-white p-5 shadow-[0_4px_4px_rgb(0_0_0/0.12)]; }
+  .input { @apply min-h-10 w-full rounded border border-navy/30 bg-white px-3 py-2 text-sm text-tinta outline-none placeholder:text-tinta/50 focus:border-navy focus:ring-2 focus:ring-aksen disabled:opacity-60; }
+  .input[type="file"] { @apply cursor-pointer py-1.5 pl-1.5 file:mr-3 file:cursor-pointer file:rounded-sm file:border-0 file:bg-navy file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white; }
+  .label { @apply mb-1 block text-sm font-medium text-navy; }
+  .tombol { @apply inline-flex min-h-10 items-center justify-center gap-2 rounded bg-aksen px-4 py-2 text-sm font-semibold text-tinta hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy disabled:cursor-not-allowed disabled:opacity-50; }
+  .tombol-garis { @apply inline-flex min-h-10 items-center justify-center gap-2 rounded border border-navy/30 bg-white px-4 py-2 text-sm font-medium text-navy hover:bg-navy/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy disabled:cursor-not-allowed disabled:opacity-50; }
+  .tombol-bahaya { @apply inline-flex min-h-10 items-center justify-center gap-2 rounded bg-merah px-4 py-2 text-sm font-semibold text-white hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy disabled:cursor-not-allowed disabled:opacity-50; }
+  .tautan { @apply font-medium text-navy underline decoration-aksen decoration-2 underline-offset-2 hover:decoration-navy; }
   .tabel { @apply w-full text-left text-sm; }
-  .tabel th { @apply border-b border-slate-200 px-3 py-2 font-medium whitespace-nowrap text-slate-500; }
-  .tabel td { @apply border-b border-slate-100 px-3 py-2; }
-  .galat { @apply rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700; }
-  .sukses { @apply rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800; }
+  .tabel th { @apply bg-navy px-3 py-2.5 text-xs font-semibold tracking-wide whitespace-nowrap text-white uppercase; }
+  .tabel td { @apply border-b border-navy/10 px-3 py-2.5; }
+  .tabel tbody tr:last-child td { @apply border-b-0; }
+  .lencana { @apply inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap; }
+  .galat { @apply rounded border border-turun/40 bg-turun/10 px-3 py-2 text-sm text-merah; }
+  .sukses { @apply rounded border border-naik/60 bg-naik/15 px-3 py-2 text-sm text-hijau; }
+  .peringatan { @apply rounded border border-amber-500/50 bg-amber-100 px-3 py-2 text-sm text-amber-900; }
+
+  /* Tema gelap halaman login (Figma node 13:31). */
+  .tema-gelap { @apply text-white; }
+  .tema-gelap .judul { @apply text-white; }
+  .tema-gelap .kartu { @apply border-white/10 bg-panel/77 shadow-none; }
+  .tema-gelap .input { @apply border-transparent bg-isian focus:border-aksen focus:ring-aksen/40; }
+  .tema-gelap .label { @apply text-white/80; }
+  .tema-gelap .tombol { @apply hover:brightness-110 focus-visible:outline-white; }
+  .tema-gelap .galat { @apply border-red-300/30 bg-red-400/15 text-red-200; }
+  .tema-gelap .sukses { @apply border-emerald-300/30 bg-emerald-400/15 text-emerald-200; }
+
+  /* Latar krom login (lapisan shader "Chromatic metal", Figma node 13:34). */
+  .latar-krom {
+    position: fixed;
+    inset: 0;
+    z-index: -10;
+    background: var(--color-dasar) url("./assets/login/latar-krom.png") center / cover no-repeat;
+    pointer-events: none;
+  }
+
+  /* Logo Selaras (ikon + tulisan putih, untuk latar gelap login): berkas logo
+     punya ruang kosong lebar, jadi dipotong lewat background-position (isi logo
+     ada di 173,179–794,309 dari 960×480). --t = tinggi tampil dalam px. */
+  .logo-selaras {
+    --k: calc(var(--t, 22) / 130);
+    width: calc(621px * var(--k));
+    height: calc(130px * var(--k));
+    background: url("./assets/login/logo-gelap.png") calc(-173px * var(--k)) calc(-179px * var(--k)) / calc(960px * var(--k)) auto no-repeat;
+  }
+
+  /* Logo tulisan "selaras." di sidebar (Figma node 35:13). Di desain berkas
+     960×480 direntangkan ke 407×103; rasio itu dipertahankan, ruang kosongnya
+     dipotong (isi ada di 165,134–801,420). --t = tinggi tulisan dalam px. */
+  .logo-tulisan {
+    --tb: calc(var(--t, 30) * 1px * 480 / 286); /* tinggi berkas saat tampil */
+    --lb: calc(var(--tb) * 407 / 103); /* lebar berkas saat tampil */
+    width: calc(var(--lb) * 636 / 960);
+    height: calc(var(--t, 30) * 1px);
+    background: url("./assets/dashboard/logo-tulisan.png") calc(var(--lb) * -165 / 960) calc(var(--tb) * -134 / 480) / var(--lb) var(--tb) no-repeat;
+  }
+
+  /* Sidebar (Figma node 35:6). Gambar latar diputar 89,44° dan diletakkan
+     seperti di desain; ukurannya mengikuti tinggi sidebar (cqh) supaya garis
+     lengkungnya selalu sampai ke bawah di layar setinggi apa pun. Angka di
+     bawah = koordinat Figma ÷ tinggi frame (1003). */
+  .sisi {
+    container-type: size;
+    background: #08295a;
+  }
+  .sisi-latar {
+    position: absolute;
+    top: 55.08cqh;
+    right: 50.5cqh;
+    width: 111.23cqh;
+    height: 115.86cqh;
+    max-width: none;
+    translate: 50% -50%;
+    rotate: 89.44deg;
+    object-fit: cover;
+    pointer-events: none;
+  }
+  /* Panel trapesium di belakang menu (Figma node 35:60). Di desain panelnya
+     hanya hitam 11%, sehingga garis lengkung melintas tepat di belakang teks
+     menu; lapisan navy berbentuk sama ditambahkan di bawahnya supaya menu
+     tetap terbaca. Sudut polygon = titik path di berkas SVG. */
+  .panel-menu {
+    position: relative;
+    isolation: isolate;
+  }
+  .panel-menu::before,
+  .panel-menu::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .panel-menu::before {
+    z-index: -2;
+    clip-path: polygon(10.45% 0, 89.55% 0, 100% 100%, 0 100%);
+    background: rgb(8 41 90 / 0.78);
+    backdrop-filter: blur(6px);
+  }
+  .panel-menu::after {
+    z-index: -1;
+    background: url("./assets/dashboard/panel-menu.svg") center / 100% 100% no-repeat;
+  }
 }

@@ -25,7 +25,7 @@ export default function App() {
   }, [fetchUser]);
 
   if (!sudahCek) {
-    return <p className="p-8 text-sm text-slate-500">Memuat…</p>;
+    return <p className="p-8 text-sm text-navy/75" role="status">Memuat…</p>;
   }
 
   return (
