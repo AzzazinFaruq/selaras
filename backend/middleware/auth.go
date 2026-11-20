@@ -38,3 +38,14 @@ func AuthMiddleware(db *bun.DB) fiber.Handler {
 		return c.Next()
 	}
 }
+
+// AdminSaja dipasang SETELAH AuthMiddleware pada grup /api/admin. Peran dibaca
+// dari basis data di setiap permintaan, jadi mencabut peran langsung berlaku.
+func AdminSaja() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		if c.Locals("petugas").(*models.Petugas).Peran != models.PeranAdmin {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Khusus admin"})
+		}
+		return c.Next()
+	}
+}

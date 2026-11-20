@@ -337,6 +337,137 @@ func TestAPI(t *testing.T) {
 	harap(t, "login dibatasi setelah 10 percobaan", kodeTerakhir, 429)
 }
 
+func TestAdmin(t *testing.T) {
+	db := siapkanDB(t)
+	ctx := context.Background()
+	k := klien{t: t, app: NewApp(db, "")}
+	db.NewRaw("update petugas set peran = 'admin' where email = 'a1@uji.id'").Exec(ctx)
+
+	admin := k.login("a1@uji.id")
+	biasa := k.login("a2@uji.id")
+	idDari := func(r respons) string {
+		t.Helper()
+		data, _ := r.body["data"].(map[string]any)
+		id, _ := data["id"].(string)
+		if id == "" {
+			t.Fatalf("respons tanpa id: %d %v", r.status, r.body)
+		}
+		return id
+	}
+	jumlah := func(path string) int {
+		t.Helper()
+		r := k.kirim("GET", path, nil, admin)
+		daftar, _ := r.body["data"].([]any)
+		return len(daftar)
+	}
+
+	// ---------------- akses ----------------
+	harap(t, "admin: tanpa login", k.kirim("GET", "/api/admin/ringkasan", nil, "").status, 401)
+	harap(t, "admin: petugas biasa ditolak", k.kirim("GET", "/api/admin/ringkasan", nil, biasa).status, 403)
+	harap(t, "admin: petugas biasa tidak bisa menulis", k.kirim("POST", "/api/admin/puskesmas", map[string]string{"nama": "X", "kota": "Y"}, biasa).status, 403)
+	r := k.kirim("GET", "/api/saya", nil, admin)
+	harap(t, "profil memuat peran", r.body["user"].(map[string]any)["peran"], "admin")
+	harap(t, "profil petugas biasa", k.kirim("GET", "/api/saya", nil, biasa).body["user"].(map[string]any)["peran"], "petugas")
+	r = k.kirim("GET", "/api/admin/ringkasan", nil, admin)
+	harap(t, "ringkasan", r.status, 200)
+	harap(t, "ringkasan: puskesmas", r.body["data"].(map[string]any)["puskesmas"], float64(2))
+	harap(t, "ringkasan: petugas", r.body["data"].(map[string]any)["petugas"], float64(3))
+
+	// ---------------- puskesmas ----------------
+	harap(t, "puskesmas: nama kosong", k.kirim("POST", "/api/admin/puskesmas", map[string]string{"nama": " ", "kota": "Malang"}, admin).status, 400)
+	r = k.kirim("POST", "/api/admin/puskesmas", map[string]string{"nama": "Puskesmas C", "kota": "Malang"}, admin)
+	harap(t, "puskesmas: buat", r.status, 201)
+	pkC := idDari(r)
+	harap(t, "puskesmas: ubah", k.kirim("PUT", "/api/admin/puskesmas/"+pkC, map[string]string{"nama": "Puskesmas C2", "kota": "Batu"}, admin).status, 200)
+	harap(t, "puskesmas: ubah id tidak ada", k.kirim("PUT", "/api/admin/puskesmas/"+uuid.NewString(), map[string]string{"nama": "X", "kota": "Y"}, admin).status, 404)
+	harap(t, "puskesmas: daftar", jumlah("/api/admin/puskesmas"), 3)
+	harap(t, "puskesmas: hapus yang masih punya petugas", k.kirim("DELETE", "/api/admin/puskesmas/"+pkA, nil, admin).status, 409)
+
+	// ---------------- posyandu ----------------
+	posy := map[string]string{"nama": "Posyandu Merah", "kelurahan": "Dinoyo", "puskesmas_id": pkA}
+	r = k.kirim("POST", "/api/admin/posyandu", posy, admin)
+	harap(t, "posyandu: buat", r.status, 201)
+	sA := idDari(r)
+	harap(t, "posyandu: nama kembar", k.kirim("POST", "/api/admin/posyandu", posy, admin).status, 409)
+	harap(t, "posyandu: puskesmas tidak ada", k.kirim("POST", "/api/admin/posyandu", map[string]string{"nama": "Z", "puskesmas_id": uuid.NewString()}, admin).status, 400)
+	harap(t, "posyandu: tanpa puskesmas", k.kirim("POST", "/api/admin/posyandu", map[string]string{"nama": "Z"}, admin).status, 400)
+	harap(t, "posyandu: ubah", k.kirim("PUT", "/api/admin/posyandu/"+sA, map[string]string{"nama": "Posyandu Merah 1", "puskesmas_id": pkA}, admin).status, 200)
+	harap(t, "posyandu: terlihat petugas puskesmasnya", len(k.kirim("GET", "/api/posyandu", nil, biasa).body["data"].([]any)), 1)
+
+	// ---------------- petugas ----------------
+	baru := map[string]any{"nama": "Petugas C1", "email": " C1@Uji.ID ", "puskesmas_id": pkC}
+	r = k.kirim("POST", "/api/admin/petugas", baru, admin)
+	harap(t, "petugas: buat", r.status, 201)
+	c1 := idDari(r)
+	pwAwal, _ := r.body["data"].(map[string]any)["password"].(string)
+	harap(t, "petugas: password awal dikirim sekali", len(pwAwal) >= 12, true)
+	harap(t, "petugas: email kembar", k.kirim("POST", "/api/admin/petugas", baru, admin).status, 409)
+	harap(t, "petugas: email tidak valid", k.kirim("POST", "/api/admin/petugas", map[string]any{"nama": "X", "email": "bukan-email", "puskesmas_id": pkC}, admin).status, 400)
+	harap(t, "petugas: peran tidak valid", k.kirim("POST", "/api/admin/petugas", map[string]any{"nama": "X", "email": "x@uji.id", "puskesmas_id": pkC, "peran": "dewa"}, admin).status, 400)
+	r = k.kirim("POST", "/api/login", map[string]string{"email": "c1@uji.id", "password": pwAwal}, "")
+	harap(t, "petugas baru bisa login", r.status, 200)
+	sesiC1 := r.cookie
+	harap(t, "puskesmas: hapus yang kini punya petugas", k.kirim("DELETE", "/api/admin/puskesmas/"+pkC, nil, admin).status, 409)
+
+	r = k.kirim("POST", "/api/admin/petugas/"+c1+"/reset-password", map[string]any{}, admin)
+	harap(t, "petugas: reset password", r.status, 200)
+	pwBaru, _ := r.body["data"].(map[string]any)["password"].(string)
+	harap(t, "reset: sesi lama berakhir", k.kirim("GET", "/api/saya", nil, sesiC1).status, 401)
+	harap(t, "reset: password lama ditolak", k.kirim("POST", "/api/login", map[string]string{"email": "c1@uji.id", "password": pwAwal}, "").status, 401)
+	r = k.kirim("POST", "/api/login", map[string]string{"email": "c1@uji.id", "password": pwBaru}, "")
+	harap(t, "reset: password baru diterima", r.status, 200)
+	sesiC1 = r.cookie
+
+	salah := false
+	harap(t, "petugas: nonaktifkan", k.kirim("PUT", "/api/admin/petugas/"+c1, map[string]any{"nama": "Petugas C1", "email": "c1@uji.id", "puskesmas_id": pkC, "aktif": salah}, admin).status, 200)
+	harap(t, "nonaktif: sesi berakhir", k.kirim("GET", "/api/saya", nil, sesiC1).status, 401)
+
+	var idAdmin string
+	db.NewRaw("select id from petugas where email = 'a1@uji.id'").Scan(ctx, &idAdmin)
+	diri := map[string]any{"nama": "Petugas A1", "email": "a1@uji.id", "puskesmas_id": pkA, "peran": "petugas"}
+	harap(t, "admin tidak bisa mencabut perannya sendiri", k.kirim("PUT", "/api/admin/petugas/"+idAdmin, diri, admin).status, 400)
+	harap(t, "admin tidak bisa menonaktifkan diri", k.kirim("PUT", "/api/admin/petugas/"+idAdmin, salin(diri, map[string]any{"peran": "admin", "aktif": salah}), admin).status, 400)
+	harap(t, "admin tidak bisa menghapus diri", k.kirim("DELETE", "/api/admin/petugas/"+idAdmin, nil, admin).status, 400)
+	harap(t, "admin tidak mereset passwordnya di panel", k.kirim("POST", "/api/admin/petugas/"+idAdmin+"/reset-password", map[string]any{}, admin).status, 400)
+	harap(t, "admin boleh mengubah namanya", k.kirim("PUT", "/api/admin/petugas/"+idAdmin, salin(diri, map[string]any{"nama": "Admin A1", "peran": "admin"}), admin).status, 200)
+
+	harap(t, "petugas: hapus (belum punya audit)", k.kirim("DELETE", "/api/admin/petugas/"+c1, nil, admin).status, 200)
+	harap(t, "puskesmas: hapus setelah kosong", k.kirim("DELETE", "/api/admin/puskesmas/"+pkC, nil, admin).status, 200)
+
+	// ---------------- audit ----------------
+	r = k.kirim("POST", "/api/audit", auditL1(sA), biasa)
+	harap(t, "audit dibuat petugas biasa", r.status, 201)
+	idAudit := idDari(r)
+	harap(t, "audit: daftar admin", jumlah("/api/admin/audit"), 1)
+	var idBiasa string
+	db.NewRaw("select id from petugas where email = 'a2@uji.id'").Scan(ctx, &idBiasa)
+	harap(t, "posyandu: hapus yang punya audit", k.kirim("DELETE", "/api/admin/posyandu/"+sA, nil, admin).status, 409)
+	harap(t, "petugas: hapus yang punya audit", k.kirim("DELETE", "/api/admin/petugas/"+idBiasa, nil, admin).status, 409)
+	harap(t, "audit: tidak ada route ubah", k.kirim("PUT", "/api/admin/audit/"+idAudit, auditL1(sA), admin).status, 404)
+	db.NewRaw("update audit_run set dibuat_pada = now(3) - interval 3 day where id = ?", idAudit).Exec(ctx)
+	harap(t, "audit: petugas tidak bisa hapus setelah 24 jam", k.kirim("DELETE", "/api/audit/"+idAudit, nil, biasa).status, 404)
+	harap(t, "audit: admin bisa hapus kapan saja", k.kirim("DELETE", "/api/admin/audit/"+idAudit, nil, admin).status, 200)
+	harap(t, "audit: sudah terhapus", k.kirim("DELETE", "/api/admin/audit/"+idAudit, nil, admin).status, 404)
+	harap(t, "posyandu: hapus setelah auditnya hilang", k.kirim("DELETE", "/api/admin/posyandu/"+sA, nil, admin).status, 200)
+
+	// ---------------- peran dicabut langsung berlaku ----------------
+	db.NewRaw("update petugas set peran = 'petugas' where email = 'a1@uji.id'").Exec(ctx)
+	harap(t, "peran dicabut: sesi yang sama langsung ditolak", k.kirim("GET", "/api/admin/ringkasan", nil, admin).status, 403)
+
+	// ---------------- basis data lama (belum ada kolom peran) ----------------
+	if _, err := db.ExecContext(ctx, "alter table petugas drop constraint petugas_peran_valid, drop column peran"); err != nil {
+		t.Fatal(err)
+	}
+	setupdb.Migrate()
+	var peran string
+	if err := db.NewRaw("select peran from petugas where email = 'a2@uji.id'").Scan(ctx, &peran); err != nil {
+		t.Fatal(err)
+	}
+	harap(t, "migrasi menambah kolom peran", peran, "petugas")
+	_, err := db.ExecContext(ctx, "update petugas set peran = 'dewa' where email = 'a2@uji.id'")
+	harap(t, "CHECK peran aktif setelah migrasi", nomorError(err), uint16(3819))
+}
+
 func TestSkema(t *testing.T) {
 	db := siapkanDB(t)
 	ctx := context.Background()

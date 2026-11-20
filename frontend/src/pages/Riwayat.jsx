@@ -72,12 +72,7 @@ export default function Riwayat() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="judul">Riwayat audit</h1>
-        <p className="mt-1 max-w-3xl text-sm text-navy/75">
-          Audit yang salah bisa dihapus pembuatnya dalam 24 jam, lalu diulang. Dashboard memakai audit terbaru per periode.
-        </p>
-      </div>
+      <h1 className="judul">Riwayat audit</h1>
       {error && <p className="galat">{error}</p>}
 
       <div className="kartu grid gap-3 p-4 sm:grid-cols-3 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))_auto] lg:items-end">
@@ -208,11 +203,7 @@ export default function Riwayat() {
         {calonHapus && (
           <>
             <p className="text-sm">
-              Audit <b>{calonHapus.posyandu_nama}</b> periode <b>{labelPeriode(calonHapus.periode)}</b> ({calonHapus.jumlah_sampel} balita
-              sampel, dibuat {labelWaktu(calonHapus.dibuat_pada)}) akan dihapus.
-            </p>
-            <p className="text-sm text-navy/75">
-              Audit yang dihapus tidak bisa dikembalikan. Bila salah, audit bisa diulang dari menu Audit baru.
+              <b>{calonHapus.posyandu_nama}</b>, {labelPeriode(calonHapus.periode)}. Audit yang dihapus tidak bisa dikembalikan.
             </p>
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button type="button" className="tombol-garis" data-fokus disabled={menghapus} onClick={() => setCalonHapus(null)}>Batal</button>

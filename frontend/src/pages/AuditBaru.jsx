@@ -103,7 +103,6 @@ function Indikator({ seri, nilai, ket }) {
       </p>
       <p className="mt-2 font-label text-4xl leading-none font-semibold tabular-nums xl:text-5xl">{labelPersen(nilai)}</p>
       <p className="mt-3 text-sm font-medium">{ket}</p>
-      <p className="mt-1 text-xs text-navy/75">{seri.tanya}</p>
     </div>
   );
 }
@@ -225,12 +224,7 @@ function FormAudit({ ulangi }) {
   return (
     <div className="space-y-8">
       <div className="space-y-4">
-        <div>
-          <h1 className="judul">Audit baru</h1>
-          <p className="mt-1 max-w-3xl text-sm text-navy/75">
-            File dibaca dan dicocokkan di browser ini. Data balita tidak dikirim ke server; yang disimpan hanya angka ringkasan.
-          </p>
-        </div>
+        <h1 className="judul">Audit baru</h1>
         <Alur selesai={selesai} />
       </div>
 
@@ -270,7 +264,6 @@ function FormAudit({ ulangi }) {
           <div>
             <label className="label" htmlFor="file-asik">Ekspor data ASIK</label>
             <input id="file-asik" type="file" accept=".xlsx,.xls,.csv" className="input" onChange={(e) => bukaFile(e, "asik")} />
-            <p className="mt-2 text-xs text-navy/75">Harus memuat tanggal input untuk menghitung ketepatan waktu.</p>
           </div>
         </div>
         {errorFile && <p className="galat">{errorFile}</p>}
@@ -291,9 +284,6 @@ function FormAudit({ ulangi }) {
           {[...kurangReg, ...kurangAsik].length > 0 && (
             <p className="peringatan">Kolom wajib belum dipilih: {[...new Set([...kurangReg, ...kurangAsik])].join(", ")}.</p>
           )}
-          <p className="text-xs text-navy/75">
-            Tanggal dibaca sebagai HH/BB/TTTT atau TTTT-BB-HH. Simpan NIK sebagai teks di Excel; angka 16 digit bisa terpotong.
-          </p>
           <button className="tombol" disabled={!bisaPeriksa} onClick={jalankanPeriksa}>Periksa data</button>
         </Langkah>
       )}
@@ -342,7 +332,6 @@ function FormAudit({ ulangi }) {
                 </div>
               ))}
             </dl>
-            <p className="mt-2 text-xs text-navy/75">Satu balita bisa punya lebih dari satu temuan, mis. tanggal ukur dan BB sama-sama berbeda.</p>
           </div>
 
           <div className="kartu overflow-hidden p-0">
@@ -402,7 +391,7 @@ function FormAudit({ ulangi }) {
               <>
                 <p className="flex items-center gap-2 text-sm font-medium text-hijau">
                   <Ikon nama="cek" />
-                  Ringkasan tersimpan dan sudah masuk dashboard.
+                  Ringkasan tersimpan
                 </p>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Link to="/" className="tombol-garis">Lihat dashboard</Link>
@@ -411,9 +400,7 @@ function FormAudit({ ulangi }) {
               </>
             ) : (
               <>
-                <p className="text-sm text-navy/75">
-                  Sudah selesai memeriksa hasilnya? Simpan ringkasannya supaya muncul di dashboard. Data balita tidak ikut disimpan.
-                </p>
+                <p className="text-sm text-navy/75">Data balita tidak ikut disimpan.</p>
                 <button type="button" className="tombol shrink-0" onClick={() => setDialog(true)}>Simpan ringkasan</button>
               </>
             )}
@@ -432,8 +419,7 @@ function FormAudit({ ulangi }) {
                 <Ikon nama="cek" />
               </span>
               <span>
-                Ringkasan audit <b>{namaPosyandu}</b> periode <b>{labelPeriode(periode)}</b> sudah tersimpan dan langsung
-                dipakai dashboard.
+<b>{namaPosyandu}</b>, {labelPeriode(periode)}
               </span>
             </p>
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -468,12 +454,8 @@ function FormAudit({ ulangi }) {
               <label className="label" htmlFor="catatan">Catatan (opsional)</label>
               <input id="catatan" className="input" maxLength={200} value={catatan} disabled={simpan.status === "proses"}
                 onChange={(e) => setCatatan(e.target.value)} placeholder="mis. sampel 20 dari 63 balita" />
-              <p className="mt-1 text-xs text-navy/75">Maksimal 200 karakter. Jangan menulis nama atau NIK balita.</p>
+              <p className="mt-1 text-xs text-navy/75">Jangan menulis nama atau NIK balita.</p>
             </div>
-            <p className="flex items-start gap-2 rounded bg-latar px-3 py-2 text-xs">
-              <Ikon nama="gembok" className="mt-px size-4" />
-              Yang disimpan hanya angka di atas dan catatan. Nama, NIK, tanggal lahir, BB, dan PB/TB balita tidak dikirim.
-            </p>
             {simpan.error && <p className="galat" role="alert">{simpan.error}</p>}
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button type="button" className="tombol-garis" disabled={simpan.status === "proses"} onClick={() => setDialog(false)}>Batal</button>

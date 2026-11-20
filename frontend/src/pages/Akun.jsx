@@ -87,7 +87,6 @@ export default function Akun() {
     <div className="space-y-6">
       <div>
         <h1 className="judul">Akun</h1>
-        <p className="mt-1 text-sm text-navy/75">Profil petugas dan keamanan akun.</p>
       </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-[22rem_minmax(0,1fr)]">
@@ -98,7 +97,7 @@ export default function Akun() {
             </span>
             <div className="min-w-0">
               <p className="subjudul truncate">{user.nama}</p>
-              <p className="text-sm text-navy/75">Petugas puskesmas</p>
+              <p className="text-sm text-navy/75">{user.peran === "admin" ? "Admin" : "Petugas"}</p>
             </div>
           </div>
           <dl className="divide-y divide-navy/10 border-t border-navy/10 px-5">
@@ -107,12 +106,9 @@ export default function Akun() {
             <Baris ikon="lokasi" label="Kota">{user.puskesmas.kota}</Baris>
           </dl>
           <div className="space-y-3 border-t border-navy/10 p-5">
-            <p className="text-xs text-navy/75">
-              Nama, email, dan puskesmas diatur oleh admin. Hubungi admin bila ada yang perlu diubah.
-            </p>
             <button type="button" className="tombol-garis w-full" onClick={logout}>
               <Ikon nama="keluar" className="size-4" />
-              Keluar dari perangkat ini
+              Keluar
             </button>
           </div>
         </section>
@@ -122,10 +118,7 @@ export default function Akun() {
             <span className="inline-flex size-9 shrink-0 items-center justify-center rounded bg-latar text-navy">
               <Ikon nama="gembok" />
             </span>
-            <div>
-              <h2 className="subjudul">Ganti password</h2>
-              <p className="mt-0.5 text-sm text-navy/75">Setelah diganti, semua sesi di perangkat lain ikut keluar dan Anda perlu masuk lagi.</p>
-            </div>
+            <h2 className="subjudul self-center">Ganti password</h2>
           </div>
 
           {error && <p className="galat" role="alert">{error}</p>}

@@ -39,6 +39,8 @@ func idValid(s string) bool {
 // Nomor error MySQL yang ditangani sebagai kesalahan input (400/409), bukan 500.
 const (
 	errDuplikat        = 1062 // unique key
+	errMasihDipakai    = 1451 // baris masih dirujuk foreign key (ON DELETE RESTRICT)
+	errIndukTidakAda   = 1452 // foreign key menunjuk baris yang tidak ada
 	errAngkaRentang    = 1264 // angka di luar rentang INT
 	errTeksPanjang     = 1406 // teks melebihi panjang kolom
 	errCheckConstraint = 3819

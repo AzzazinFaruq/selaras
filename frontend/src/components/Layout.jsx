@@ -12,6 +12,7 @@ const MENU = [
   { to: "/posyandu", label: "Posyandu", ikon: "posyandu" },
   { to: "/akun", label: "Akun", ikon: "akun" },
 ];
+const MENU_ADMIN = { to: "/admin", label: "Administrasi", ikon: "admin" };
 
 export default function Layout() {
   const user = useAuthStore((s) => s.user);
@@ -69,7 +70,7 @@ export default function Layout() {
           </div>
 
           <nav aria-label="Menu utama" className="panel-menu mx-4 mt-7 space-y-1 px-6 py-6">
-            {MENU.map((m) => (
+            {(user.peran === "admin" ? [...MENU, MENU_ADMIN] : MENU).map((m) => (
               <NavLink
                 key={m.to} to={m.to} end={m.end} onClick={() => setBuka(false)}
                 className={({ isActive }) =>

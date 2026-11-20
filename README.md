@@ -21,7 +21,7 @@ Browser petugas                                   Homeserver
 backend/                 Go 1.25, Fiber v2, bun (MySQL), golang-jwt, bcrypt
   main.go                server, atau perintah admin bila ada argumen
   Config/                baca .env
-  Controllers/           auth, posyandu, audit
+  Controllers/           auth, posyandu, audit, admin
   Models/                model bun
   Routes/                daftar route + uji integrasi (routes_test.go)
   Setup/                 koneksi DB, skema.sql (dijalankan otomatis), perintah admin
@@ -30,7 +30,7 @@ backend/                 Go 1.25, Fiber v2, bun (MySQL), golang-jwt, bcrypt
 frontend/                React (Vite), Tailwind v4, react-router, axios, zustand, Recharts, SheetJS
   src/lib/rekonsiliasi.js  logika inti (murni, diuji dengan node --test)
   src/lib/excel.js       baca/tulis Excel di browser
-  src/pages/             Login, Dashboard, AuditBaru, Riwayat, Posyandu, Akun
+  src/pages/             Login, Dashboard, AuditBaru, Riwayat, Posyandu, Akun, Admin
   scripts/data-tiruan.mjs  generator data tiruan berisi kesalahan yang disengaja
 arsip-supabase/          skema & uji versi Supabase (tidak dipakai lagi)
 ```
@@ -42,7 +42,8 @@ arsip-supabase/          skema & uji versi Supabase (tidak dipakai lagi)
 | Data balita | Tidak pernah dikirim ke server. Body API dibatasi 16 KB; skema hanya punya kolom angka + catatan ≤ 200 karakter. |
 | Token login | JWT di cookie `HttpOnly; Secure; SameSite=Strict`. Tidak ada di body respons maupun localStorage. |
 | Rahasia | `JWT_SECRET` (≥ 32 karakter), `DB_USER`, `DB_NAME` wajib. Server berhenti bila kosong; tidak ada nilai default. |
-| Akun | Tidak ada pendaftaran publik. Admin membuat akun lewat CLI di server. |
+| Akun | Tidak ada pendaftaran publik. Akun dibuat admin, lewat CLI di server atau panel admin di web. Admin pertama hanya bisa ditunjuk lewat CLI (`jadikan-admin`). |
+| Panel admin | `/api/admin/*` hanya untuk akun berperan admin; peran dibaca dari basis data di setiap permintaan. Audit hanya bisa dilihat dan dihapus, tidak bisa diubah. |
 | Isolasi puskesmas | Setiap query memakai `puskesmas_id` petugas dari sesi (pengganti RLS). `puskesmas_id`/`petugas_id` tidak pernah diambil dari input klien. |
 | Cabut sesi | Kolom `token_versi`: logout, ganti password, reset, atau nonaktif langsung membatalkan semua token lama. |
 | CSRF | Cookie SameSite=Strict + POST/PUT wajib `application/json`. Frontend satu origin dengan API, tanpa CORS. |
@@ -122,6 +123,8 @@ Dijalankan di server, dari folder yang berisi `.env`:
 ./selaras petugas-baru <email> "<nama>" <puskesmas_id>   # mencetak password awal sekali
 ./selaras reset-password <email>                         # password baru + keluarkan semua sesi
 ./selaras nonaktifkan <email>
+./selaras jadikan-admin <email>                           # boleh membuka menu Administrasi di web
+./selaras cabut-admin <email>
 ./selaras daftar
 ```
 
@@ -140,7 +143,7 @@ docker compose exec app /app/selaras puskesmas-baru "Puskesmas Contoh" "Surabaya
 docker compose exec app /app/selaras petugas-baru saya@contoh.id "Nama Saya" <id-puskesmas>   # catat password
 ```
 
-Perintah admin lain (`reset-password`, `nonaktifkan`, `daftar`) dipanggil dengan cara yang sama.
+Perintah admin lain (`reset-password`, `nonaktifkan`, `jadikan-admin`, `daftar`) dipanggil dengan cara yang sama. Setelah satu akun dijadikan admin (`docker compose exec app /app/selaras jadikan-admin saya@contoh.id`), puskesmas, posyandu, dan akun petugas berikutnya bisa dikelola dari menu **Administrasi** di web.
 
 **Akses dan HTTPS:** secara bawaan aplikasi hanya bisa dijangkau di `http://127.0.0.1:8080` dari homeserver itu sendiri, dan cookie login bertanda `Secure`, jadi dari luar harus lewat HTTPS. Arahkan Cloudflare Tunnel (`cloudflared`) ke `http://127.0.0.1:8080` dan isi `PROXY_HEADER=CF-Connecting-IP` di `.env`. Bila `cloudflared` sendiri berjalan sebagai container, gabungkan ia ke jaringan compose ini dan arahkan ke `http://app:8080`. Untuk sekadar mencoba lewat `http://` di jaringan lokal, isi `APP_ENV=development` dan `APP_BIND=0.0.0.0:8080`; jangan dipakai untuk data sungguhan.
 

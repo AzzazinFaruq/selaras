@@ -21,7 +21,7 @@ func NewAuthHandler(db *bun.DB) *AuthHandler {
 }
 
 // Tidak ada endpoint register. Akun petugas dibuat admin lewat CLI
-// (lihat Setup/admin.go).
+// (Setup/admin.go) atau panel admin (admin_con.go).
 
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	req := new(struct {
@@ -135,6 +135,7 @@ func (h *AuthHandler) kirimProfil(c *fiber.Ctx, petugas *models.Petugas) error {
 			"id":        petugas.ID,
 			"nama":      petugas.Nama,
 			"email":     petugas.Email,
+			"peran":     petugas.Peran,
 			"puskesmas": puskesmas,
 		},
 	})

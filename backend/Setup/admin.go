@@ -15,14 +15,17 @@ import (
 	"github.com/google/uuid"
 )
 
-// Perintah admin lewat terminal di homeserver. Sengaja tidak ada halaman
-// admin di web: lebih sedikit permukaan serangan.
+// Perintah admin lewat terminal di homeserver. Admin PERTAMA hanya bisa dibuat
+// dari sini (jadikan-admin); setelah itu ia bisa mengelola sisanya lewat panel
+// admin di web.
 const bantuan = `Perintah admin SELARAS:
   selaras                                          menjalankan server
   selaras puskesmas-baru "<nama>" "<kota>"
   selaras petugas-baru <email> "<nama>" <puskesmas_id>
   selaras reset-password <email>
   selaras nonaktifkan <email>
+  selaras jadikan-admin <email>                    boleh membuka panel admin di web
+  selaras cabut-admin <email>
   selaras daftar                                   daftar puskesmas & petugas`
 
 func JalankanPerintah(args []string) {
@@ -38,6 +41,10 @@ func JalankanPerintah(args []string) {
 		err = resetPassword(ctx, args[1])
 	case args[0] == "nonaktifkan" && len(args) == 2:
 		err = nonaktifkan(ctx, args[1])
+	case args[0] == "jadikan-admin" && len(args) == 2:
+		err = ubahPeran(ctx, args[1], models.PeranAdmin)
+	case args[0] == "cabut-admin" && len(args) == 2:
+		err = ubahPeran(ctx, args[1], models.PeranPetugas)
 	case args[0] == "daftar" && len(args) == 1:
 		err = daftar(ctx)
 	default:
@@ -82,6 +89,7 @@ func petugasBaru(ctx context.Context, email, nama, puskesmasID string) error {
 		Email:        email,
 		PasswordHash: hash,
 		Aktif:        true,
+		Peran:        models.PeranPetugas,
 	}
 	if _, err := DB.NewInsert().Model(p).Exec(ctx); err != nil {
 		return err
@@ -130,6 +138,22 @@ func nonaktifkan(ctx context.Context, email string) error {
 	return nil
 }
 
+func ubahPeran(ctx context.Context, email, peran string) error {
+	res, err := DB.NewUpdate().
+		Model((*models.Petugas)(nil)).
+		Set("peran = ?", peran).
+		Where("email = ?", strings.ToLower(strings.TrimSpace(email))).
+		Exec(ctx)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	fmt.Printf("Peran %s sekarang: %s\n", email, peran)
+	return nil
+}
+
 func daftar(ctx context.Context) error {
 	var puskesmas []models.Puskesmas
 	if err := DB.NewSelect().Model(&puskesmas).Order("nama").Scan(ctx); err != nil {
@@ -145,9 +169,9 @@ func daftar(ctx context.Context) error {
 	for _, p := range puskesmas {
 		fmt.Fprintf(w, "%s\t%s\t%s\n", p.ID, p.Nama, p.Kota)
 	}
-	fmt.Fprintln(w, "\nEMAIL PETUGAS\tNAMA\tPUSKESMAS ID\tAKTIF")
+	fmt.Fprintln(w, "\nEMAIL PETUGAS\tNAMA\tPUSKESMAS ID\tAKTIF\tPERAN")
 	for _, p := range petugas {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%v\n", p.Email, p.Nama, p.PuskesmasID, p.Aktif)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%v\t%s\n", p.Email, p.Nama, p.PuskesmasID, p.Aktif, p.Peran)
 	}
 	return w.Flush()
 }

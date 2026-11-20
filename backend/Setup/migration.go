@@ -20,7 +20,31 @@ func Migrate() {
 			log.Fatalf("Migrasi skema gagal: %v\n%s", err, stmt)
 		}
 	}
+	tambahKolom(ctx, "petugas", "peran",
+		"alter table petugas add column peran varchar(10) not null default 'petugas' after aktif, "+
+			"add constraint petugas_peran_valid check (peran in ('petugas', 'admin'))")
 	log.Println("Skema basis data siap")
+}
+
+// tambahKolom menjalankan ALTER hanya bila kolomnya belum ada. Dipakai untuk
+// basis data yang dibuat sebelum kolom itu masuk skema.sql (CREATE TABLE IF
+// NOT EXISTS tidak mengubah tabel yang sudah ada, dan MySQL tidak punya
+// ADD COLUMN IF NOT EXISTS).
+func tambahKolom(ctx context.Context, tabel, kolom, alter string) {
+	var ada int
+	err := DB.NewRaw(
+		"select count(*) from information_schema.columns where table_schema = database() and table_name = ? and column_name = ?",
+		tabel, kolom).Scan(ctx, &ada)
+	if err != nil {
+		log.Fatalf("Migrasi skema gagal (cek kolom %s.%s): %v", tabel, kolom, err)
+	}
+	if ada > 0 {
+		return
+	}
+	if _, err := DB.ExecContext(ctx, alter); err != nil {
+		log.Fatalf("Migrasi skema gagal: %v\n%s", err, alter)
+	}
+	log.Printf("Kolom %s.%s ditambahkan", tabel, kolom)
 }
 
 // pecahStatement memotong skema per titik koma di akhir baris. Dipakai supaya

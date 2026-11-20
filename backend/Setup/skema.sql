@@ -40,7 +40,8 @@ CREATE TABLE IF NOT EXISTS posyandu (
   CONSTRAINT posyandu_puskesmas_fk FOREIGN KEY (puskesmas_id) REFERENCES puskesmas (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Akun petugas gizi. Dibuat admin lewat perintah CLI, tidak ada pendaftaran publik.
+-- Akun petugas gizi. Tidak ada pendaftaran publik: akun dibuat admin lewat
+-- perintah CLI atau panel admin di web.
 CREATE TABLE IF NOT EXISTS petugas (
   id            CHAR(36)     NOT NULL DEFAULT (UUID()),
   puskesmas_id  CHAR(36)     NOT NULL,
@@ -49,6 +50,9 @@ CREATE TABLE IF NOT EXISTS petugas (
   email         VARCHAR(254) NOT NULL,
   password_hash VARCHAR(100) NOT NULL,
   aktif         BOOLEAN      NOT NULL DEFAULT TRUE,
+  -- 'admin' boleh membuka panel admin (kelola semua puskesmas). Pada basis data
+  -- lama kolom ini ditambahkan oleh Setup/migration.go.
+  peran         VARCHAR(10)  NOT NULL DEFAULT 'petugas',
   -- Dinaikkan saat logout / ganti password / reset / nonaktif, sehingga
   -- semua token lama langsung tidak berlaku.
   token_versi   INT          NOT NULL DEFAULT 0,
@@ -56,7 +60,8 @@ CREATE TABLE IF NOT EXISTS petugas (
   PRIMARY KEY (id),
   UNIQUE KEY petugas_email_unik (email),
   KEY petugas_puskesmas_idx (puskesmas_id),
-  CONSTRAINT petugas_puskesmas_fk FOREIGN KEY (puskesmas_id) REFERENCES puskesmas (id) ON DELETE RESTRICT
+  CONSTRAINT petugas_puskesmas_fk FOREIGN KEY (puskesmas_id) REFERENCES puskesmas (id) ON DELETE RESTRICT,
+  CONSTRAINT petugas_peran_valid CHECK (peran IN ('petugas', 'admin'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Satu baris per audit. HANYA angka agregat.

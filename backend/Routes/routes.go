@@ -83,6 +83,26 @@ func Setup(app *fiber.App, db *bun.DB) {
 	api.Post("/audit", auditHandler.CreateAudit)
 	api.Delete("/audit/:id", auditHandler.DeleteAudit)
 
+	// --- khusus admin: kelola semua puskesmas ---
+	adminHandler := controllers.NewAdminHandler(db)
+	admin := api.Group("/admin", middleware.AdminSaja())
+	admin.Get("/ringkasan", adminHandler.Ringkasan)
+	admin.Get("/puskesmas", adminHandler.DaftarPuskesmas)
+	admin.Post("/puskesmas", adminHandler.BuatPuskesmas)
+	admin.Put("/puskesmas/:id", adminHandler.UbahPuskesmas)
+	admin.Delete("/puskesmas/:id", adminHandler.HapusPuskesmas)
+	admin.Get("/posyandu", adminHandler.DaftarPosyandu)
+	admin.Post("/posyandu", adminHandler.BuatPosyandu)
+	admin.Put("/posyandu/:id", adminHandler.UbahPosyandu)
+	admin.Delete("/posyandu/:id", adminHandler.HapusPosyandu)
+	admin.Get("/petugas", adminHandler.DaftarPetugas)
+	admin.Post("/petugas", adminHandler.BuatPetugas)
+	admin.Put("/petugas/:id", adminHandler.UbahPetugas)
+	admin.Post("/petugas/:id/reset-password", adminHandler.ResetPassword)
+	admin.Delete("/petugas/:id", adminHandler.HapusPetugas)
+	admin.Get("/audit", adminHandler.DaftarAudit)
+	admin.Delete("/audit/:id", adminHandler.HapusAudit)
+
 	api.Use(func(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Endpoint tidak ditemukan"})
 	})

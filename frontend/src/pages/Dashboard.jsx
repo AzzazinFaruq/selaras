@@ -4,7 +4,6 @@ import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, X
 import useAuditStore from "../stores/auditStore";
 import usePaginasi from "../lib/usePaginasi";
 import Paginasi from "../components/Paginasi";
-import PenjelasanIndikator from "../components/PenjelasanIndikator";
 import LegendaAmbang from "../components/LegendaAmbang";
 import { INDIKATOR, TEMUAN, kelasPersen } from "../lib/indikator";
 import { labelPeriode, labelPersen } from "../lib/format";
@@ -103,11 +102,8 @@ export default function Dashboard() {
         <h1 className="judul">Dashboard tren kualitas data</h1>
         {error && <p className="galat">{error}</p>}
         <div className="kartu flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="subjudul">Belum ada audit tersimpan</h2>
-            <p className="mt-1 text-sm text-navy/75">Tren dan rekap muncul di sini setelah audit pertama disimpan.</p>
-          </div>
-          <Link to="/audit-baru" className="tombol w-full sm:w-auto">Mulai audit pertama</Link>
+          <h2 className="subjudul">Belum ada audit</h2>
+          <Link to="/audit-baru" className="tombol w-full sm:w-auto">Audit baru</Link>
         </div>
       </div>
     );
@@ -118,7 +114,6 @@ export default function Dashboard() {
       <div className="flex flex-wrap items-end gap-3">
         <div className="mr-auto">
           <h1 className="judul">Dashboard tren kualitas data</h1>
-          <p className="mt-1 text-sm text-navy/75">Audit terbaru per posyandu per bulan</p>
         </div>
         <div className="w-full sm:w-auto">
           <label className="label" htmlFor="pilih-posyandu">Posyandu</label>
@@ -171,15 +166,9 @@ export default function Dashboard() {
         </>
       )}
 
-      <PenjelasanIndikator />
-
       <section className="kartu overflow-hidden p-0">
         <div className="space-y-2 px-4 pt-4 pb-3 sm:px-5">
           <h2 className="subjudul">Rekap per periode</h2>
-          <p className="text-xs text-navy/75">
-            Semua posyandu, periode terbaru di atas; posyandu yang sedang dipilih disorot. Kolom temuan berisi jumlah
-            balita, dan satu balita bisa masuk lebih dari satu kolom. Selisih ditulis berurutan: tanggal ukur / BB / PB-TB.
-          </p>
           <LegendaAmbang />
         </div>
 

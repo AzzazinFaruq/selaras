@@ -9,6 +9,14 @@ import AuditBaru from "./pages/AuditBaru";
 import Riwayat from "./pages/Riwayat";
 import Posyandu from "./pages/Posyandu";
 import Akun from "./pages/Akun";
+import Admin from "./pages/Admin";
+
+// Hanya untuk tampilan: server tetap menolak /api/admin bagi yang bukan admin.
+function AdminRoute({ children }) {
+  const user = useAuthStore((s) => s.user);
+  if (user?.peran !== "admin") return <Navigate to="/" replace />;
+  return children;
+}
 
 function GuestRoute({ children }) {
   const user = useAuthStore((s) => s.user);
@@ -39,6 +47,7 @@ export default function App() {
           <Route path="/riwayat" element={<Riwayat />} />
           <Route path="/posyandu" element={<Posyandu />} />
           <Route path="/akun" element={<Akun />} />
+          <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

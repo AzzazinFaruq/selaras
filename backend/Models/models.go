@@ -9,6 +9,11 @@ import (
 // Struktur tabel ada di Setup/skema.sql. Model di sini hanya untuk
 // insert/select lewat bun.
 
+const (
+	PeranPetugas = "petugas"
+	PeranAdmin   = "admin"
+)
+
 type Puskesmas struct {
 	bun.BaseModel `bun:"table:puskesmas"`
 
@@ -37,6 +42,7 @@ type Petugas struct {
 	Email        string    `bun:"email" json:"email"`
 	PasswordHash string    `bun:"password_hash" json:"-"`
 	Aktif        bool      `bun:"aktif" json:"-"`
+	Peran        string    `bun:"peran,nullzero,notnull,default:'petugas'" json:"-"`
 	TokenVersi   int       `bun:"token_versi" json:"-"`
 	DibuatPada   time.Time `bun:"dibuat_pada,nullzero,notnull,default:current_timestamp" json:"-"`
 }

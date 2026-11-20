@@ -54,10 +54,7 @@ export default function Posyandu() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="judul">Posyandu</h1>
-        <p className="mt-1 text-sm text-navy/75">Daftar posyandu di wilayah puskesmas ini, dipakai saat membuat audit.</p>
-      </div>
+      <h1 className="judul">Posyandu</h1>
       {error && <p className="galat">{error}</p>}
 
       <form onSubmit={tambah} className="kartu grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
@@ -74,9 +71,6 @@ export default function Posyandu() {
       </form>
 
       <div className="kartu overflow-x-auto p-0">
-        <p className="px-4 py-3 text-sm text-navy/75 sm:px-5">
-          <b className="text-navy tabular-nums">{posyandu.length}</b> posyandu terdaftar
-        </p>
         <table className="tabel">
           <thead>
             <tr><th>Nama</th><th>Kelurahan</th><th></th></tr>
