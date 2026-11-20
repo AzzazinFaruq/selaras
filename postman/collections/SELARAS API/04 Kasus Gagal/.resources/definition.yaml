@@ -1,0 +1,5 @@
+$kind: collection
+name: "04 Kasus Gagal"
+description: |-
+  Membuktikan API menolak input yang salah dan akses ke data puskesmas lain. Dijalankan saat login sebagai admin@selarass.id. Semua error berbentuk `{ "error": "pesan" }`.
+order: 4000

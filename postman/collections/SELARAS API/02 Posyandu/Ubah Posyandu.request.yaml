@@ -1,0 +1,30 @@
+$kind: http-request
+name: "Ubah Posyandu"
+description: |-
+  Mengubah nama dan kelurahan. Kirim keduanya, karena `kelurahan` yang kosong akan menghapus nilainya. Menyimpan tanpa perubahan tetap 200.
+
+  **Respons 200**
+  ```json
+  { "message": "Posyandu diperbarui" }
+  ```
+
+  Gagal: 400, 404 (tidak ada atau milik puskesmas lain), 409 (nama kembar).
+method: PUT
+url: "{{baseUrl}}/api/posyandu/{{posyanduBaruId}}"
+order: 3000
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "nama": "{{posyanduBaruNama}}",
+      "kelurahan": "Keputih Timur"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status 200', function () {
+          pm.response.to.have.status(200);
+      });

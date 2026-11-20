@@ -1,0 +1,18 @@
+$kind: http-request
+name: "Profil Saya"
+description: |-
+  Profil petugas yang sedang login. Bentuk responsnya sama dengan Login. Gagal: 401 bila belum login atau sesi berakhir.
+method: GET
+url: "{{baseUrl}}/api/saya"
+order: 3000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status 200', function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test('Mengembalikan akun yang login', function () {
+          pm.expect(pm.response.json().user.email).to.eql(pm.environment.get('email'));
+      });

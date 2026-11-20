@@ -1,0 +1,5 @@
+$kind: collection
+name: "01 Auth"
+description: |-
+  Login menyimpan token di cookie HttpOnly `selaras_token`. Postman menyimpan dan mengirim cookie itu otomatis, jadi tidak perlu header Authorization.
+order: 1000

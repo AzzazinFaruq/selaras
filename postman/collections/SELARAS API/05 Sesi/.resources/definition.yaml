@@ -1,0 +1,5 @@
+$kind: collection
+name: "05 Sesi"
+description: |-
+  Akhir sesi. Folder ini dijalankan terakhir karena Logout membatalkan semua token petugas tersebut.
+order: 5000

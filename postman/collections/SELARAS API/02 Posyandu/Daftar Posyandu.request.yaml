@@ -1,0 +1,37 @@
+$kind: http-request
+name: "Daftar Posyandu"
+description: |-
+  Semua posyandu di puskesmas petugas, urut nama.
+
+  **Respons 200**
+  ```json
+  {
+    "data": [
+      { "id": "acf5905f-f86d-586e-a396-91f81994f931", "nama": "Posyandu Melati 1", "kelurahan": "Dinoyo" }
+    ]
+  }
+  ```
+method: GET
+url: "{{baseUrl}}/api/posyandu"
+order: 1000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status 200', function () {
+          pm.response.to.have.status(200);
+      });
+
+      const data = pm.response.json().data;
+
+      pm.test('Memuat posyandu sendiri', function () {
+          pm.expect(data.map((p) => p.id)).to.include(pm.environment.get('posyanduMelatiId'));
+      });
+
+      pm.test('Tidak memuat posyandu puskesmas lain', function () {
+          pm.expect(data.map((p) => p.id)).to.not.include(pm.environment.get('posyanduLainId'));
+      });
+
+      pm.test('puskesmas_id tidak diekspos', function () {
+          pm.expect(data[0]).to.not.have.property('puskesmas_id');
+      });

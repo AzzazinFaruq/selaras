@@ -1,0 +1,60 @@
+$kind: http-request
+name: "Simpan Audit"
+description: |-
+  Menyimpan ringkasan satu audit. `petugas_id` diambil dari sesi. Audit ulang periode yang sama membuat baris baru; dashboard memakai yang terbaru.
+
+  | Field | Keterangan |
+  |---|---|
+  | `posyandu_id` | Posyandu milik puskesmas petugas |
+  | `periode` | `YYYY-MM`, tidak boleh masa depan |
+  | `jumlah_sampel` | Lebih dari 0 |
+  | `jumlah_tercatat_asik` + `jml_tidak_ada_di_asik` | Harus sama dengan `jumlah_sampel` |
+  | `jml_tidak_sesuai` | Balita dengan minimal satu selisih, maksimal `jumlah_tercatat_asik` |
+  | `jml_selisih_tanggal`, `jml_selisih_bb`, `jml_selisih_tb` | Rincian terbesar <= `jml_tidak_sesuai` <= jumlah rincian |
+  | `jml_terlambat` | Maksimal `jumlah_tercatat_asik` |
+  | `catatan` | Opsional, maksimal 200 karakter, tanpa nama/NIK balita |
+
+  Contoh ini memakai angka Tabel L.1 proposal: 85% / 82,35% / 76,47%.
+
+  **Respons 201**
+  ```json
+  { "data": { "id": "<uuid>" } }
+  ```
+
+  Gagal: 400 (angka tidak konsisten, periode salah, catatan terlalu panjang), 404 (posyandu tidak ditemukan), 413 (body > 16 KB).
+method: POST
+url: "{{baseUrl}}/api/audit"
+order: 1000
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "posyandu_id": "{{posyanduBaruId}}",
+      "periode": "{{periode}}",
+      "jumlah_sampel": 20,
+      "jumlah_tercatat_asik": 17,
+      "jml_tidak_ada_di_asik": 3,
+      "jml_tidak_sesuai": 3,
+      "jml_selisih_tanggal": 0,
+      "jml_selisih_bb": 2,
+      "jml_selisih_tb": 1,
+      "jml_terlambat": 4,
+      "catatan": "uji dari Postman"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status 201', function () {
+          pm.response.to.have.status(201);
+      });
+
+      const data = pm.response.json().data;
+
+      pm.test('Mengembalikan id audit', function () {
+          pm.expect(data.id).to.be.a('string').and.to.have.lengthOf(36);
+      });
+
+      pm.collectionVariables.set('auditId', data.id);

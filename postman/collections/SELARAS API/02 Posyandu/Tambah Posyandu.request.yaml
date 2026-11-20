@@ -1,0 +1,41 @@
+$kind: http-request
+name: "Tambah Posyandu"
+description: |-
+  Nama wajib, maksimal 100 karakter, dan unik per puskesmas tanpa membedakan huruf besar-kecil. Kelurahan opsional.
+
+  Nama di contoh ini memakai `{{$timestamp}}` supaya koleksi bisa dijalankan berulang. Karena tidak ada endpoint hapus, setiap run menambah satu posyandu; impor ulang `backend/data_dummy.sql` untuk membersihkannya.
+
+  **Respons 201**
+  ```json
+  { "data": { "id": "<uuid>", "nama": "Flamboyan 1793428920", "kelurahan": "Keputih" } }
+  ```
+
+  Gagal: 400 (nama kosong/terlalu panjang), 409 (nama kembar).
+method: POST
+url: "{{baseUrl}}/api/posyandu"
+order: 2000
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "nama": "Flamboyan {{$timestamp}}",
+      "kelurahan": "Keputih"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status 201', function () {
+          pm.response.to.have.status(201);
+      });
+
+      const data = pm.response.json().data;
+
+      pm.test('Mengembalikan id baru', function () {
+          pm.expect(data.id).to.be.a('string').and.to.have.lengthOf(36);
+      });
+
+      pm.collectionVariables.set('posyanduBaruId', data.id);
+      pm.collectionVariables.set('posyanduBaruNama', data.nama);

@@ -98,6 +98,21 @@ TEST_DB_NAME=selaras_test DB_USER=selaras DB_PASSWORD=... go test ./...
 
 Uji integrasi mencakup isolasi antar puskesmas, cookie, pembatalan sesi, batas body, rate limit, semua CHECK constraint, dan angka Tabel L.1 (85% / 82,35% / 76,47%).
 
+## Dokumentasi API (Postman)
+
+Dokumentasi API ada di koleksi `postman/collections/SELARAS API/` (format Native Git v3, butuh Postman desktop v12+), sekaligus berfungsi sebagai test. Isinya 23 request dengan penjelasan, contoh respons, dan assertion.
+
+1. Jalankan backend dengan `APP_ENV=development`, lalu impor `backend/data_dummy.sql`. **File ini mengosongkan keempat tabel sebelum mengisi data**, jadi hanya untuk database development. Akun: `admin@selarass.id` / `Admin@12345`; petugas lain memakai password `Petugas@123`.
+2. Di Postman, buka folder proyek ini, pilih environment **SELARAS Lokal**, lalu jalankan koleksinya.
+
+Atau lewat terminal dengan [Postman CLI](https://learning.postman.com/docs/postman-cli/postman-cli-overview/):
+
+```bash
+postman collection run "postman/collections/SELARAS API" -e postman/environments/selaras-lokal.environment.yaml
+```
+
+Setiap run menambah satu posyandu karena API tidak punya endpoint hapus posyandu. Impor ulang `data_dummy.sql` untuk membersihkannya.
+
 ## Perintah admin
 
 Dijalankan di server, dari folder yang berisi `.env`:
@@ -173,6 +188,8 @@ sudo systemctl enable --now selaras
 ```
 0 2 * * * mysqldump --single-transaction selaras > /var/backups/selaras-$(date +\%F).sql
 ```
+
+**Memindahkan database:** pakai `mysqldump`, atau biarkan aplikasi membuat tabelnya lalu impor datanya saja. Jangan memakai skema dari ekspor phpMyAdmin: hasil ekspornya kehilangan 7 CHECK constraint `audit_run`, dan aplikasi tidak menambahkannya kembali pada tabel yang sudah ada. Sumber skema yang benar adalah `backend/Setup/skema.sql`.
 
 ## Perbedaan dari proposal (Tabel 3.1)
 

@@ -1,0 +1,28 @@
+name: SELARAS Lokal
+values:
+  - key: baseUrl
+    value: http://127.0.0.1:8080
+    enabled: true
+
+  # Akun demo dari backend/data_dummy.sql. Bukan rahasia dan tidak berlaku di produksi.
+  - key: email
+    value: admin@selarass.id
+    enabled: true
+  - key: password
+    value: Admin@12345
+    enabled: true
+
+  - key: periode
+    value: 2026-10
+    enabled: true
+
+  # ID tetap dari backend/data_dummy.sql
+  - key: posyanduMelatiId
+    value: acf5905f-f86d-586e-a396-91f81994f931
+    enabled: true
+  - key: posyanduLainId
+    value: c31cbef8-13e8-51e6-afcd-6b3f85e7d805
+    enabled: true
+  - key: auditPetugasLainId
+    value: 403edf29-b600-5586-bb9e-aebe8a95ecf2
+    enabled: true

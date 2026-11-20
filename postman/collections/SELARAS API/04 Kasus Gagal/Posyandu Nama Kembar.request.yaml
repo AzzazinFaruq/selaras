@@ -1,0 +1,26 @@
+$kind: http-request
+name: "Posyandu Nama Kembar"
+description: |-
+  "posyandu melati 1" dianggap sama dengan "Posyandu Melati 1" yang sudah ada.
+method: POST
+url: "{{baseUrl}}/api/posyandu"
+order: 7000
+headers:
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "nama": "posyandu melati 1"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status 409', function () {
+          pm.response.to.have.status(409);
+      });
+
+      pm.test('Ada pesan error', function () {
+          pm.expect(pm.response.json().error).to.be.a('string').and.not.empty;
+      });
