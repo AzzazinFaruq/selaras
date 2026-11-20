@@ -61,7 +61,7 @@ export default function Login() {
 
       <main className="flex flex-1 items-center justify-center px-4 pt-8 pb-16">
         <form onSubmit={kirim} className="kartu w-full max-w-sm space-y-4 p-6 sm:p-8">
-          <h1 className="judul text-center text-5xl">Login</h1>
+          <h1 className="judul text-center text-4xl">Login</h1>
 
           {pesan && <p className="sukses">{pesan}</p>}
           {error && <p className="galat" role="alert">{error}</p>}

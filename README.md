@@ -1,63 +1,111 @@
 # SELARAS
 
-Aplikasi web audit kualitas data pertumbuhan balita: membandingkan rekap buku register posyandu dengan ekspor ASIK, lalu menghitung kelengkapan, kesesuaian, dan ketepatan waktu.
+SELARAS adalah aplikasi web untuk mengaudit kualitas data pertumbuhan balita. Aplikasi ini membandingkan catatan di **buku register posyandu** dengan data yang sudah diinput ke **ASIK** (Aplikasi Sehat IndonesiaKu), lalu menunjukkan seberapa lengkap, sesuai, dan tepat waktu data tersebut.
 
-**Prinsip utama:** file register dan ASIK hanya dibaca dan dicocokkan **di browser** petugas. Server hanya menerima dan menyimpan angka agregat per posyandu per bulan. Tidak ada tabel atau kolom per balita di basis data.
+Aplikasi ini ditujukan bagi petugas gizi puskesmas yang perlu memeriksa secara berkala apakah hasil penimbangan di posyandu sudah masuk ke sistem dengan benar.
+
+## Apa yang dilakukan
+
+Petugas menyiapkan dua file Excel atau CSV untuk satu posyandu dan satu bulan:
+
+1. **Rekap buku register**: daftar balita yang ditimbang, disalin dari buku register posyandu.
+2. **Ekspor ASIK**: data balita yang sama, diunduh dari ASIK.
+
+SELARAS mencocokkan keduanya balita demi balita dan menghitung tiga indikator:
+
+| Indikator | Pertanyaan yang dijawab |
+|---|---|
+| **Kelengkapan** | Apakah semua balita di buku register sudah ada di ASIK? |
+| **Kesesuaian** | Apakah tanggal ukur, berat badan, dan panjang/tinggi badan di ASIK sama dengan di buku register? |
+| **Ketepatan waktu** | Apakah data diinput paling lambat 7 hari setelah hari posyandu? |
+
+Hasilnya berupa daftar balita yang datanya bermasalah (bisa diunduh sebagai Excel untuk diperbaiki di ASIK) dan angka ringkasan yang disimpan untuk melihat tren dari bulan ke bulan.
+
+## Fitur
+
+- **Audit baru**: alur enam langkah, dari memilih posyandu sampai menyimpan ringkasan. Nama kolom di file tidak harus baku; aplikasi menebaknya dan petugas bisa membetulkan.
+- **Dashboard**: tren tiga indikator per posyandu dan rekap seluruh posyandu per bulan.
+- **Riwayat**: semua audit yang pernah disimpan, dengan pencarian dan filter.
+- **Posyandu**: daftar posyandu di wilayah puskesmas.
+- **Administrasi** (khusus admin): kelola puskesmas, posyandu, dan akun petugas.
+
+## Privasi data
+
+Data balita adalah data pribadi anak, jadi SELARAS dirancang supaya data itu **tidak pernah meninggalkan komputer petugas**:
+
+- Kedua file dibaca dan dicocokkan di dalam browser. Isinya tidak diunggah ke server.
+- Server hanya menerima dan menyimpan **angka ringkasan** per posyandu per bulan (misalnya "20 balita sampel, 17 ada di ASIK") dan catatan singkat.
+- Basis data tidak punya tabel atau kolom per balita: tidak ada nama, NIK, tanggal lahir, berat, maupun tinggi badan.
 
 ```
-Browser petugas                                   Homeserver
+Browser petugas                                   Server
 ┌──────────────────────────────────────┐          ┌─────────────────────────────┐
 │ file register + ekspor ASIK          │          │ Go (Fiber)  ─── MySQL 8     │
-│   → SheetJS → normalisasi → hash     │  HTTPS   │  /api/*  hanya angka        │
-│   → rekonsiliasi → daftar masalah    │ ───────▶ │  /       frontend (dist)    │
+│   → dibaca dan dicocokkan di sini    │  HTTPS   │  /api/*  hanya angka        │
+│   → daftar masalah                   │ ───────▶ │  /       frontend           │
 │     (diunduh sebagai Excel)          │  angka   │                             │
 │   → ringkasan angka ─────────────────┼──────────┤  audit_run (agregat)        │
 └──────────────────────────────────────┘  saja    └─────────────────────────────┘
 ```
 
-## Struktur
+## Menjalankan dengan Docker
 
-```
-backend/                 Go 1.25, Fiber v2, bun (MySQL), golang-jwt, bcrypt
-  main.go                server, atau perintah admin bila ada argumen
-  Config/                baca .env
-  Controllers/           auth, posyandu, audit, admin
-  Models/                model bun
-  Routes/                daftar route + uji integrasi (routes_test.go)
-  Setup/                 koneksi DB, skema.sql (dijalankan otomatis), perintah admin
-  Utils/                 password (bcrypt), token (JWT)
-  middleware/            header keamanan, auth
-frontend/                React (Vite), Tailwind v4, react-router, axios, zustand, Recharts, SheetJS
-  src/lib/rekonsiliasi.js  logika inti (murni, diuji dengan node --test)
-  src/lib/excel.js       baca/tulis Excel di browser
-  src/pages/             Login, Dashboard, AuditBaru, Riwayat, Posyandu, Akun, Admin
-  scripts/data-tiruan.mjs  generator data tiruan berisi kesalahan yang disengaja
-arsip-supabase/          skema & uji versi Supabase (tidak dipakai lagi)
-```
-
-## Keamanan (ringkas)
-
-| Hal | Cara |
-|---|---|
-| Data balita | Tidak pernah dikirim ke server. Body API dibatasi 16 KB; skema hanya punya kolom angka + catatan ≤ 200 karakter. |
-| Token login | JWT di cookie `HttpOnly; Secure; SameSite=Strict`. Tidak ada di body respons maupun localStorage. |
-| Rahasia | `JWT_SECRET` (≥ 32 karakter), `DB_USER`, `DB_NAME` wajib. Server berhenti bila kosong; tidak ada nilai default. |
-| Akun | Tidak ada pendaftaran publik. Akun dibuat admin, lewat CLI di server atau panel admin di web. Admin pertama hanya bisa ditunjuk lewat CLI (`jadikan-admin`). |
-| Panel admin | `/api/admin/*` hanya untuk akun berperan admin; peran dibaca dari basis data di setiap permintaan. Audit hanya bisa dilihat dan dihapus, tidak bisa diubah. |
-| Isolasi puskesmas | Setiap query memakai `puskesmas_id` petugas dari sesi (pengganti RLS). `puskesmas_id`/`petugas_id` tidak pernah diambil dari input klien. |
-| Cabut sesi | Kolom `token_versi`: logout, ganti password, reset, atau nonaktif langsung membatalkan semua token lama. |
-| CSRF | Cookie SameSite=Strict + POST/PUT wajib `application/json`. Frontend satu origin dengan API, tanpa CORS. |
-| Brute force | Login maks 10 kali per 15 menit per IP. bcrypt cost 12. Waktu respons sama untuk email yang ada/tidak. |
-| Header | CSP ketat, X-Frame-Options DENY, HSTS (produksi), no-store untuk API. |
-| Integritas angka | CHECK constraint di MySQL (koneksi memaksa mode ketat); persen dihitung basis data (generated column). Audit tidak bisa di-update, hanya dihapus pembuatnya ≤ 24 jam. |
-| Akses database | User MySQL khusus aplikasi dengan hak hanya di satu database. Koneksi tanpa `multiStatements`. |
-
-## Development
-
-Butuh Go 1.25+, Node 20+, **MySQL 8.0.17+** (MySQL Laragon 8.0.30 sudah cukup). MariaDB tidak didukung karena perilaku CHECK, generated column, dan `CAST AS DOUBLE`-nya berbeda.
+Cara termudah untuk memasang SELARAS di server sendiri. Yang dibutuhkan hanya Docker Engine dan plugin Compose.
 
 ```bash
-# 1. Database (di HeidiSQL / mysql -u root)
+git clone https://github.com/AzzazinFaruq/selaras.git && cd selaras
+cp .env.example .env && chmod 600 .env   # isi DB_PASSWORD, DB_ROOT_PASSWORD, JWT_SECRET
+docker compose up -d --build
+docker compose ps                        # tunggu sampai app berstatus "healthy"
+```
+
+Tidak ada pendaftaran publik, jadi akun pertama dibuat lewat perintah di server:
+
+```bash
+docker compose exec app /app/selaras puskesmas-baru "Puskesmas Contoh" "Kota Contoh"        # catat id-nya
+docker compose exec app /app/selaras petugas-baru nama@contoh.id "Nama Petugas" <id-puskesmas>   # catat password
+docker compose exec app /app/selaras jadikan-admin nama@contoh.id
+```
+
+Setelah satu akun menjadi admin, puskesmas, posyandu, dan akun petugas berikutnya bisa dikelola dari menu **Administrasi** di web.
+
+### Akses dan HTTPS
+
+Secara bawaan aplikasi hanya bisa dijangkau di `http://127.0.0.1:8080` dari server itu sendiri, dan cookie login hanya dikirim lewat HTTPS. Untuk diakses dari luar, pasang reverse proxy ber-HTTPS di depannya (misalnya Caddy, Nginx, atau Cloudflare Tunnel) yang diarahkan ke `http://127.0.0.1:8080`.
+
+- Bila proxy meneruskan alamat IP pengunjung lewat header, isi nama headernya di `PROXY_HEADER` (contoh: `CF-Connecting-IP` untuk Cloudflare). Ini hanya aman selama port aplikasi tidak bisa dijangkau langsung dari luar.
+- Untuk sekadar mencoba lewat `http://` di jaringan lokal, isi `APP_ENV=development` dan `APP_BIND=0.0.0.0:8080`. Jangan dipakai untuk data sungguhan.
+
+### Perawatan
+
+```bash
+git pull && docker compose up -d --build     # memperbarui ke versi terbaru
+docker compose logs -f app                   # melihat log
+docker compose exec -T db sh -c 'mysqldump --single-transaction -uroot -p"$MYSQL_ROOT_PASSWORD" selaras' > selaras-$(date +%F).sql   # backup
+```
+
+Data MySQL tersimpan di volume `selaras_db-data`. `docker compose down` aman; `docker compose down -v` **menghapus seluruh data**. Password di `.env` hanya dipakai saat basis data pertama kali dibuat, jadi mengubahnya belakangan tidak mengubah password di MySQL.
+
+## Perintah admin
+
+Dijalankan di server. Dengan Docker, awali dengan `docker compose exec app /app/selaras`; tanpa Docker, jalankan binary `selaras` dari folder yang berisi `.env`.
+
+```bash
+selaras puskesmas-baru "<nama>" "<kota>"
+selaras petugas-baru <email> "<nama>" <puskesmas_id>   # mencetak password awal satu kali
+selaras reset-password <email>                         # password baru, semua sesi diakhiri
+selaras nonaktifkan <email>
+selaras jadikan-admin <email>                          # boleh membuka menu Administrasi
+selaras cabut-admin <email>
+selaras daftar                                         # daftar puskesmas dan petugas
+```
+
+## Pengembangan
+
+Butuh Go 1.25+, Node 20.19+, dan **MySQL 8.0.17+**. MariaDB tidak didukung karena perilaku CHECK constraint, generated column, dan `CAST AS DOUBLE`-nya berbeda.
+
+```bash
+# 1. Basis data (lewat klien MySQL apa pun)
 CREATE DATABASE selaras CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 CREATE USER 'selaras'@'127.0.0.1' IDENTIFIED BY '<password>';
 GRANT ALL PRIVILEGES ON selaras.* TO 'selaras'@'127.0.0.1';
@@ -65,8 +113,8 @@ GRANT ALL PRIVILEGES ON selaras.* TO 'selaras'@'127.0.0.1';
 # 2. Backend
 cd backend
 cp .env.example .env             # isi DB_PASSWORD dan JWT_SECRET (openssl rand -hex 32)
-go run . puskesmas-baru "Puskesmas Contoh" "Surabaya"     # catat id-nya
-go run . petugas-baru saya@contoh.id "Nama Saya" <id-puskesmas>   # catat password
+go run . puskesmas-baru "Puskesmas Contoh" "Kota Contoh"          # catat id-nya
+go run . petugas-baru nama@contoh.id "Nama Petugas" <id-puskesmas>   # catat password
 go run .                         # API di http://127.0.0.1:8080
 
 # 3. Frontend (terminal lain)
@@ -75,7 +123,9 @@ npm install
 npm run dev                      # http://localhost:5173, /api diteruskan ke backend
 ```
 
-Coba dengan data tiruan:
+Tabel dibuat otomatis saat backend pertama kali dijalankan.
+
+### Mencoba dengan data tiruan
 
 ```bash
 cd frontend
@@ -83,27 +133,26 @@ npm run data-tiruan -- 2026-10 20
 # -> data-tiruan/register-2026-10.xlsx dan asik-2026-10.xlsx, plus angka yang seharusnya keluar
 ```
 
-Lalu di aplikasi: tambah posyandu → Audit baru → pilih periode Oktober 2026 → buka kedua file.
+Lalu di aplikasi: tambah posyandu, buka **Audit baru**, pilih periode yang sama, dan buka kedua file. Semua nama dan NIK di file tiruan bersifat fiktif.
 
-## Uji
+### Uji
 
 ```bash
-cd frontend && npm test          # logika rekonsiliasi (15 uji)
+cd frontend && npm test          # logika pencocokan data
 
 cd backend
-# Uji integrasi API + skema. PERINGATAN: tabel SELARAS di database ini DIHAPUS.
-# Nama database wajib mengandung "test". DB_HOST/DB_PORT/DB_USER/DB_PASSWORD dari environment.
-CREATE DATABASE selaras_test ...; GRANT ALL PRIVILEGES ON selaras_test.* TO 'selaras'@'127.0.0.1';
+# Uji integrasi API dan skema. PERINGATAN: tabel SELARAS di basis data ini DIHAPUS,
+# jadi nama basis datanya wajib mengandung kata "test".
 TEST_DB_NAME=selaras_test DB_USER=selaras DB_PASSWORD=... go test ./...
 ```
 
-Uji integrasi mencakup isolasi antar puskesmas, cookie, pembatalan sesi, batas body, rate limit, semua CHECK constraint, dan angka Tabel L.1 (85% / 82,35% / 76,47%).
+Uji integrasi mencakup isolasi antar puskesmas, panel admin, cookie, pembatalan sesi, batas ukuran permintaan, pembatasan percobaan login, dan seluruh CHECK constraint.
 
-## Dokumentasi API (Postman)
+### Dokumentasi API
 
-Dokumentasi API ada di koleksi `postman/collections/SELARAS API/` (format Native Git v3, butuh Postman desktop v12+), sekaligus berfungsi sebagai test. Isinya 23 request dengan penjelasan, contoh respons, dan assertion.
+Dokumentasi API berupa koleksi Postman di `postman/collections/SELARAS API/` (butuh Postman desktop v12+), yang sekaligus berfungsi sebagai uji: 23 permintaan dengan penjelasan, contoh respons, dan pemeriksaan otomatis.
 
-1. Jalankan backend dengan `APP_ENV=development`, lalu impor `backend/data_dummy.sql`. **File ini mengosongkan keempat tabel sebelum mengisi data**, jadi hanya untuk database development. Akun: `admin@selarass.id` / `Admin@12345`; petugas lain memakai password `Petugas@123`.
+1. Jalankan backend dengan `APP_ENV=development`, lalu impor `backend/data_dummy.sql`. **File ini mengosongkan semua tabel sebelum mengisi data contoh**, jadi hanya untuk basis data pengembangan. Akun contohnya tertulis di dalam file itu.
 2. Di Postman, buka folder proyek ini, pilih environment **SELARAS Lokal**, lalu jalankan koleksinya.
 
 Atau lewat terminal dengan [Postman CLI](https://learning.postman.com/docs/postman-cli/postman-cli-overview/):
@@ -112,65 +161,60 @@ Atau lewat terminal dengan [Postman CLI](https://learning.postman.com/docs/postm
 postman collection run "postman/collections/SELARAS API" -e postman/environments/selaras-lokal.environment.yaml
 ```
 
-Setiap run menambah satu posyandu karena API tidak punya endpoint hapus posyandu. Impor ulang `data_dummy.sql` untuk membersihkannya.
+## Struktur proyek
 
-## Perintah admin
-
-Dijalankan di server, dari folder yang berisi `.env`:
-
-```bash
-./selaras puskesmas-baru "<nama>" "<kota>"
-./selaras petugas-baru <email> "<nama>" <puskesmas_id>   # mencetak password awal sekali
-./selaras reset-password <email>                         # password baru + keluarkan semua sesi
-./selaras nonaktifkan <email>
-./selaras jadikan-admin <email>                           # boleh membuka menu Administrasi di web
-./selaras cabut-admin <email>
-./selaras daftar
+```
+backend/                 Go, Fiber v2, bun (MySQL), golang-jwt, bcrypt
+  main.go                server, atau perintah admin bila ada argumen
+  Controllers/           auth, posyandu, audit, admin
+  Routes/                daftar route + uji integrasi
+  Setup/                 koneksi basis data, skema.sql (dijalankan otomatis), perintah admin
+  middleware/            header keamanan, autentikasi
+frontend/                React (Vite), Tailwind v4, zustand, Recharts, SheetJS
+  src/lib/rekonsiliasi.js  logika pencocokan data (murni, punya uji sendiri)
+  src/lib/excel.js       baca/tulis Excel di browser
+  src/pages/             Login, Dashboard, AuditBaru, Riwayat, Posyandu, Akun, Admin
+  scripts/data-tiruan.mjs  pembuat data tiruan berisi kesalahan yang disengaja
+postman/                 koleksi dokumentasi dan uji API
+Dockerfile, docker-compose.yml
 ```
 
-## Deploy dengan Docker
+## Keamanan
 
-Butuh Docker Engine dan plugin Compose di homeserver. Satu perintah membangun image aplikasi (binary Go + frontend) dan menjalankannya bersama MySQL.
+| Hal | Cara |
+|---|---|
+| Data balita | Tidak pernah dikirim ke server. Ukuran permintaan API dibatasi 16 KB; skema hanya punya kolom angka dan catatan ≤ 200 karakter. |
+| Sesi login | Token di cookie `HttpOnly; Secure; SameSite=Strict`, tidak pernah ada di badan respons maupun `localStorage`. |
+| Akun | Tidak ada pendaftaran publik. Akun dibuat admin; admin pertama hanya bisa ditunjuk lewat perintah di server. |
+| Panel admin | Hanya untuk akun berperan admin, dan peran diperiksa di setiap permintaan. Audit hanya bisa dilihat dan dihapus, tidak bisa diubah. |
+| Isolasi antar puskesmas | Petugas hanya bisa melihat dan mengubah data puskesmasnya sendiri; pembatasnya diambil dari sesi, bukan dari input. |
+| Pencabutan sesi | Logout, ganti password, reset password, atau penonaktifan akun langsung membatalkan semua sesi lama. |
+| CSRF | Cookie `SameSite=Strict` dan permintaan tulis wajib `application/json`. Frontend dan API berada di satu origin, tanpa CORS. |
+| Tebak password | Login dibatasi 10 kali per 15 menit per alamat IP; password disimpan dengan bcrypt. |
+| Header | CSP ketat, `X-Frame-Options: DENY`, HSTS, dan `no-store` untuk API. |
+| Integritas angka | CHECK constraint di basis data menolak angka yang tidak konsisten; persentase dihitung oleh basis data. |
+| Rahasia | `JWT_SECRET` dan kredensial basis data wajib diisi; server menolak berjalan bila kosong. |
 
-```bash
-git clone https://github.com/AzzazinFaruq/selaras.git && cd selaras
-cp .env.example .env && chmod 600 .env   # isi DB_PASSWORD, DB_ROOT_PASSWORD, JWT_SECRET
-docker compose up -d --build
-docker compose ps                        # tunggu sampai app berstatus "healthy"
+## Batasan
 
-# Akun pertama (perintah admin dijalankan di dalam container app)
-docker compose exec app /app/selaras puskesmas-baru "Puskesmas Contoh" "Surabaya"       # catat id-nya
-docker compose exec app /app/selaras petugas-baru saya@contoh.id "Nama Saya" <id-puskesmas>   # catat password
-```
+- Hanya sheet pertama yang dibaca, dan baris pertama harus berisi nama kolom.
+- Tanggal berbentuk teks dibaca sebagai `HH/BB/TTTT` atau `TTTT-BB-HH`. Format bulan-dulu (gaya Amerika) akan salah baca.
+- Balita dicocokkan lewat NIK; bila NIK tidak ada, lewat nama dan tanggal lahir. Pencocokan nama harus persis setelah dirapikan: "M. Rizky" dan "Muhammad Rizky" dianggap dua anak berbeda.
+- Berat dan tinggi badan dianggap sama bila sama setelah dibulatkan ke 0,1.
+- Ketepatan waktu dihitung dari tanggal ukur di buku register sampai tanggal input di ASIK.
+- Simpan NIK sebagai teks di Excel; angka 16 digit bisa terpotong bila disimpan sebagai angka.
 
-Perintah admin lain (`reset-password`, `nonaktifkan`, `jadikan-admin`, `daftar`) dipanggil dengan cara yang sama. Setelah satu akun dijadikan admin (`docker compose exec app /app/selaras jadikan-admin saya@contoh.id`), puskesmas, posyandu, dan akun petugas berikutnya bisa dikelola dari menu **Administrasi** di web.
+## Memasang tanpa Docker
 
-**Akses dan HTTPS:** secara bawaan aplikasi hanya bisa dijangkau di `http://127.0.0.1:8080` dari homeserver itu sendiri, dan cookie login bertanda `Secure`, jadi dari luar harus lewat HTTPS. Arahkan Cloudflare Tunnel (`cloudflared`) ke `http://127.0.0.1:8080` dan isi `PROXY_HEADER=CF-Connecting-IP` di `.env`. Bila `cloudflared` sendiri berjalan sebagai container, gabungkan ia ke jaringan compose ini dan arahkan ke `http://app:8080`. Untuk sekadar mencoba lewat `http://` di jaringan lokal, isi `APP_ENV=development` dan `APP_BIND=0.0.0.0:8080`; jangan dipakai untuk data sungguhan.
-
-**Perawatan:**
-
-```bash
-git pull && docker compose up -d --build     # memperbarui ke versi terbaru
-docker compose logs -f app                   # melihat log
-docker compose exec -T db sh -c 'mysqldump --single-transaction -uroot -p"$MYSQL_ROOT_PASSWORD" selaras' > selaras-$(date +%F).sql   # backup
-```
-
-Data MySQL tersimpan di volume `selaras_db-data`. `docker compose down` aman; `docker compose down -v` **menghapus seluruh data**. Password di `.env` hanya dipakai saat database pertama kali dibuat, jadi mengubahnya belakangan tidak mengubah password di MySQL.
-
-## Deploy ke homeserver (Linux, tanpa Docker)
+SELARAS berupa satu binary Go yang juga menyajikan frontend, jadi bisa dijalankan langsung di server Linux dengan MySQL yang sudah ada.
 
 ```bash
-# Di laptop: build
 cd frontend && npm ci && npm run build
 cd ../backend && GOOS=linux GOARCH=amd64 go build -o selaras .
-
-# Salin ke server: backend/selaras, backend/.env, frontend/dist  ->  /opt/selaras/
-#   /opt/selaras/selaras
-#   /opt/selaras/.env        (chmod 600)
-#   /opt/selaras/dist/
+# Salin ke server: backend/selaras, backend/.env, dan frontend/dist
 ```
 
-`.env` produksi:
+Isi `.env` di server (contoh bila semuanya ditaruh di `/opt/selaras`):
 
 ```
 APP_ADDR=127.0.0.1:8080
@@ -181,62 +225,9 @@ DB_PASSWORD=<password user MySQL>
 DB_NAME=selaras
 JWT_SECRET=<openssl rand -hex 32>
 STATIC_DIR=/opt/selaras/dist
-PROXY_HEADER=CF-Connecting-IP
+PROXY_HEADER=
 ```
 
-`APP_ENV` dibiarkan kosong agar cookie `Secure` dan HSTS aktif. Karena itu aplikasi harus diakses lewat HTTPS.
+Biarkan `APP_ENV` kosong supaya cookie `Secure` dan HSTS aktif, lalu jalankan binary itu sebagai layanan (misalnya dengan systemd) di belakang reverse proxy ber-HTTPS.
 
-Service systemd, `/etc/systemd/system/selaras.service`:
-
-```ini
-[Unit]
-Description=SELARAS
-After=network.target mysql.service
-
-[Service]
-User=selaras
-WorkingDirectory=/opt/selaras
-ExecStart=/opt/selaras/selaras
-Restart=on-failure
-NoNewPrivileges=true
-ProtectSystem=strict
-ProtectHome=true
-PrivateTmp=true
-
-[Install]
-WantedBy=multi-user.target
-```
-
-```bash
-sudo useradd --system --no-create-home selaras
-sudo chown -R selaras: /opt/selaras && sudo chmod 600 /opt/selaras/.env
-sudo systemctl enable --now selaras
-```
-
-**HTTPS:** server hanya mendengar di `127.0.0.1`, jadi tidak ada port yang dibuka ke internet. Akses dari luar lewat Cloudflare Tunnel (`cloudflared`) yang diarahkan ke `http://127.0.0.1:8080`. `PROXY_HEADER=CF-Connecting-IP` hanya aman selama port 8080 tidak bisa dijangkau langsung.
-
-**Backup** (opsional, satu baris cron harian):
-
-```
-0 2 * * * mysqldump --single-transaction selaras > /var/backups/selaras-$(date +\%F).sql
-```
-
-**Memindahkan database:** pakai `mysqldump`, atau biarkan aplikasi membuat tabelnya lalu impor datanya saja. Jangan memakai skema dari ekspor phpMyAdmin: hasil ekspornya kehilangan 7 CHECK constraint `audit_run`, dan aplikasi tidak menambahkannya kembali pada tabel yang sudah ada. Sumber skema yang benar adalah `backend/Setup/skema.sql`.
-
-## Perbedaan dari proposal (Tabel 3.1)
-
-| Proposal | Implementasi |
-|---|---|
-| Supabase (PostgreSQL, magic link, RLS) | MySQL 8 di homeserver; login email + password; isolasi di backend Go |
-| Vercel | Homeserver; frontend disajikan oleh binary Go yang sama |
-| shadcn/ui, Zod | Tailwind biasa; validasi manual di `rekonsiliasi.js` |
-| Web Worker | Tidak dipakai; sampel 15–20 balita (atau ratusan baris) selesai dalam milidetik |
-| React (Vite), SheetJS, Web Crypto, Recharts | Sama |
-
-## Batasan yang perlu diketahui
-
-- Hanya sheet pertama yang dibaca, dan baris 1 harus header.
-- Tanggal teks dibaca sebagai `HH/BB/TTTT` atau `TTTT-BB-HH`. Format bulan-dulu (AS) akan salah baca.
-- Pencocokan nama bersifat persis setelah normalisasi. "M. Rizky" dan "Muhammad Rizky" dianggap berbeda; NIK mengatasi ini bila tercatat.
-- BB/TB dianggap sama bila sama setelah dibulatkan ke 0,1.
-- Ketepatan waktu dihitung dari tanggal ukur di buku register (hari buka posyandu) sampai tanggal input ASIK.
+Saat memindahkan basis data, pakai `mysqldump`, atau biarkan aplikasi membuat tabelnya lalu impor datanya saja. Sumber skema yang benar adalah `backend/Setup/skema.sql`; skema hasil ekspor alat lain bisa kehilangan CHECK constraint, dan aplikasi tidak menambahkannya kembali pada tabel yang sudah ada.
